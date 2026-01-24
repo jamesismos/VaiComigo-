@@ -1,5 +1,6 @@
-import { MapPin, Navigation, X, Search } from "lucide-react";
+import { MapPin, Navigation, X, Search, Locate } from "lucide-react";
 import { useState, useEffect } from "react";
+import GooglePlacesAutocomplete from "react-google-places-autocomplete";
 
 interface LocationInputProps {
   type: "origin" | "destination" | "stop";
@@ -30,6 +31,9 @@ export function LocationInput({
   const [cep, setCep] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
 
   // Função para buscar CEP via ViaCEP
   const fetchCep = async (cepValue: string) => {
@@ -72,17 +76,48 @@ export function LocationInput({
     setShowSuggestions(false);
   };
 
+  // Função para obter geolocalização
+  const getCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setLocation({ lat: latitude, lng: longitude });
+          // Aqui você pode usar uma API reversa para obter endereço
+          onChange(`Lat: ${latitude}, Lng: ${longitude}`);
+        },
+        (error) => {
+          console.error("Erro ao obter localização:", error);
+          alert("Permissão de localização negada ou erro.");
+        },
+      );
+    } else {
+      alert("Geolocalização não suportada pelo navegador.");
+    }
+  };
+
   return (
     <div className="relative">
       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary">
         <Icon size={20} />
       </div>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full pl-12 pr-4 py-4 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+      {/* Autocompletar com Google Places */}
+      <GooglePlacesAutocomplete
+        apiKey={import.meta.env.VITE_GOOGLE_MAPS_KEY}
+        selectProps={{
+          value,
+          onChange: (val) => onChange(val?.label || ""),
+          placeholder,
+          styles: {
+            control: (provided) => ({
+              ...provided,
+              border: "1px solid #ccc",
+              borderRadius: "0.5rem",
+              padding: "0.5rem 0.75rem",
+              fontSize: "1rem",
+            }),
+          },
+        }}
       />
       {/* Campo para CEP */}
       <div className="mt-2 relative">
@@ -112,6 +147,14 @@ export function LocationInput({
           </ul>
         )}
       </div>
+      {/* Botão para geolocalização */}
+      <button
+        onClick={getCurrentLocation}
+        className="mt-2 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+      >
+        <Locate size={16} />
+        Usar Minha Localização
+      </button>
       {type === "stop" && onRemove && (
         <button
           onClick={onRemove}

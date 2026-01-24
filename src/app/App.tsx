@@ -39,6 +39,7 @@ import {
   getCategoryDescription,
   validateCoupon,
 } from "@/app/utils/calculations";
+import Auth from "@/components/Auth";
 
 export default function App() {
   // Estados principais
@@ -383,6 +384,7 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Auth />
               <button
                 onClick={() => setForceMobile(!forceMobile)}
                 className={`p-1 hover:bg-muted rounded-lg transition-colors ${
