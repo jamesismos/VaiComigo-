@@ -1234,8 +1234,9 @@ export default function App() {
             {screen === "payment" && (
               <div className="space-y-4 lg:col-span-2">
                 <h2 className="text-xl font-bold mb-4">Formas de Pagamento</h2>
-                <div className="bg-card border border-border p-6 rounded-2xl">
-                  <div className="flex items-center gap-3 p-4 bg-secondary rounded-xl mb-4">
+                <div className="bg-card border border-border p-6 rounded-2xl space-y-4">
+                  {/* Cartão de Crédito */}
+                  <div className="flex items-center gap-3 p-4 bg-secondary rounded-xl">
                     <CreditCard size={24} className="text-primary" />
                     <div className="flex-1">
                       <div className="font-bold">Cartão de Crédito</div>
@@ -1246,6 +1247,39 @@ export default function App() {
                     <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
                       Padrão
                     </span>
+                  </div>
+
+                  {/* Pix */}
+                  <div className="flex items-center gap-3 p-4 border border-border rounded-xl hover:bg-secondary transition-colors cursor-pointer">
+                    <Smartphone size={24} className="text-green-600" />
+                    <div className="flex-1">
+                      <div className="font-bold">Pix</div>
+                      <div className="text-sm text-muted-foreground">
+                        Pagamento instantâneo
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bitcoin */}
+                  <div className="flex items-center gap-3 p-4 border border-border rounded-xl hover:bg-secondary transition-colors cursor-pointer">
+                    <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold">₿</div>
+                    <div className="flex-1">
+                      <div className="font-bold">Bitcoin</div>
+                      <div className="text-sm text-muted-foreground">
+                        Criptomoeda
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dinheiro */}
+                  <div className="flex items-center gap-3 p-4 border border-border rounded-xl hover:bg-secondary transition-colors cursor-pointer">
+                    <Tag size={24} className="text-green-600" />
+                    <div className="flex-1">
+                      <div className="font-bold">Dinheiro</div>
+                      <div className="text-sm text-muted-foreground">
+                        Pague ao motorista
+                      </div>
+                    </div>
                   </div>
 
                   <button className="w-full p-4 border border-dashed border-border rounded-xl text-muted-foreground hover:text-foreground hover:border-primary transition-all flex items-center justify-center gap-2">

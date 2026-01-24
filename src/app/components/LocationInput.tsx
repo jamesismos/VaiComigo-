@@ -1,6 +1,6 @@
 import { MapPin, Navigation, X, Search, Locate } from "lucide-react";
 import { useState, useEffect } from "react";
-import GooglePlacesAutocomplete from "react-google-places-autocomplete";
+// import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
 
 interface LocationInputProps {
   type: "origin" | "destination" | "stop";
@@ -101,8 +101,8 @@ export function LocationInput({
       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary">
         <Icon size={20} />
       </div>
-      {/* Autocompletar com Google Places */}
-      <GooglePlacesAutocomplete
+      {/* Autocompletar com Google Places - TEMPORARIAMENTE DESABILITADO */}
+      {/* <GooglePlacesAutocomplete
         apiKey={import.meta.env.VITE_GOOGLE_MAPS_KEY}
         selectProps={{
           value,
@@ -111,13 +111,20 @@ export function LocationInput({
           styles: {
             control: (provided) => ({
               ...provided,
-              border: "1px solid #ccc",
-              borderRadius: "0.5rem",
-              padding: "0.5rem 0.75rem",
-              fontSize: "1rem",
+              border: '1px solid #ccc',
+              borderRadius: '0.5rem',
+              padding: '0.5rem 0.75rem',
+              fontSize: '1rem',
             }),
           },
         }}
+      /> */}
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full pl-12 pr-4 py-4 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
       />
       {/* Campo para CEP */}
       <div className="mt-2 relative">
