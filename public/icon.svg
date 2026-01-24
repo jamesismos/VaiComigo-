@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="#0F5F4A"/>
+  
+  <!-- Car Icon -->
+  <path d="M128 280C128 271.2 135.2 264 144 264H368C376.8 264 384 271.2 384 280V344C384 352.8 376.8 360 368 360H144C135.2 360 128 352.8 128 344V280Z" fill="#ECECEC"/>
+  <path d="M96 320C96 311.2 103.2 304 112 304H144V360H112C103.2 360 96 352.8 96 344V320Z" fill="#ECECEC"/>
+  <path d="M368 304H400C408.8 304 416 311.2 416 320V344C416 352.8 408.8 360 400 360H368V304Z" fill="#ECECEC"/>
+  <circle cx="160" cy="376" r="24" fill="#ECECEC"/>
+  <circle cx="352" cy="376" r="24" fill="#ECECEC"/>
+  
+  <!-- Road lines -->
+  <rect x="200" y="180" width="112" height="8" rx="4" fill="#ECECEC" opacity="0.6"/>
+  <rect x="240" y="140" width="32" height="8" rx="4" fill="#ECECEC" opacity="0.4"/>
+  
+  <!-- Navigation arrow -->
+  <path d="M256 100L280 140H232L256 100Z" fill="#ECECEC"/>
+  
+  <!-- Text -->
+  <text x="256" y="460" font-family="system-ui" font-size="48" font-weight="bold" fill="#ECECEC" text-anchor="middle">VaiComigo</text>
+</svg>
