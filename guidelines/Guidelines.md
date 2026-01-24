@@ -1,4 +1,5 @@
 **Add your own guidelines here**
+
 <!--
 
 System Guidelines
@@ -59,3 +60,32 @@ or initiating processes. They communicate interactivity and should have clear, a
   * Visual Style : Text-only with no border, using primary color
   * Usage : For actions that should be available but not emphasized
 -->
+
+# Regional Pricing Implementation
+
+The app now supports regional pricing for different areas in Minas Gerais:
+
+- **Vale do Jequitinhonha**: First implemented region with adjusted pricing for interior areas
+  - Base price: R$ 3.00
+  - Price per km: R$ 2.00
+  - Price per minute: R$ 0.25
+
+Future regions to be added:
+
+- Belo Horizonte (with dynamic pricing)
+- Other interior regions
+
+Pricing is stored in `PRICING_CONFIG` as an object keyed by region type.
+
+# VaiMercado Features
+
+- Allows passengers (up to 4)
+- Option to use trunk (porta malas) with additional fee
+- Pricing includes passenger costs + trunk fee when applicable
+
+# Geolocation and Login
+
+- **Map Integration**: Uses OpenStreetMap via Leaflet for free mapping
+- **Login Required**: Address input requires user authentication
+- **CEP Geocoding**: Entering CEP centers map on city using ViaCEP + Nominatim
+- **Default Region**: Vale do Jequitinhonha coordinates for initial map center

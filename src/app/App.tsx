@@ -20,15 +20,17 @@ import {
   ChevronRight,
   Minus,
   Smartphone,
+  Check,
 } from "lucide-react";
 import { LocationInput } from "@/app/components/LocationInput";
-import { MapPlaceholder } from "@/app/components/MapPlaceholder";
+import { MapComponent } from "@/app/components/MapPlaceholder";
 import {
   PRICING_CONFIG,
   CategorySelection,
   Coupon,
   RideStatus,
   CategoryType,
+  RegionType,
 } from "@/app/config/pricing";
 import {
   calculateRoute,
@@ -41,10 +43,17 @@ import {
 export default function App() {
   // Estados principais
   const [screen, setScreen] = useState<
-    "home" | "ride-progress" | "rating" | "history" | "coupons" | "payment"
+    | "home"
+    | "ride-progress"
+    | "rating"
+    | "history"
+    | "coupons"
+    | "payment"
+    | "login"
   >("home");
   const [showMenu, setShowMenu] = useState(false);
   const [forceMobile, setForceMobile] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Estados de categoria
   const [categories, setCategories] = useState<CategorySelection>({
@@ -52,7 +61,17 @@ export default function App() {
     hasPet: false,
     isDelivery: false,
     isMarket: false,
+    hasTrunk: false,
   });
+
+  // Estado da região
+  const [region, setRegion] = useState<RegionType>("vale-jequitinhonha");
+
+  // Estados de geolocalização
+  const [cep, setCep] = useState("");
+  const [mapCenter, setMapCenter] = useState<[number, number]>([
+    -18.5122, -44.555,
+  ]); // Vale do Jequitinhonha
 
   // Estados da corrida
   const [origin, setOrigin] = useState("");
@@ -161,13 +180,13 @@ export default function App() {
     if (origin && destination) {
       const route = calculateRoute(origin, destination, stops.length);
       setRouteInfo(route);
-      const price = calculatePrice(route, categories, stops.length);
+      const price = calculatePrice(route, categories, stops.length, region);
       setTotalPrice(price);
     } else {
       setRouteInfo(null);
       setTotalPrice(0);
     }
-  }, [origin, destination, stops, categories]);
+  }, [origin, destination, stops, categories, region]);
 
   // Handlers de paradas
   const handleAddStop = () => {
@@ -186,6 +205,33 @@ export default function App() {
     setStops(newStops);
   };
 
+  // Handler de CEP
+  const handleCepChange = async (value: string) => {
+    setCep(value);
+    if (value.length === 8) {
+      try {
+        // Buscar dados do CEP via ViaCEP
+        const response = await fetch(`https://viacep.com.br/ws/${value}/json/`);
+        const data = await response.json();
+        if (!data.erro) {
+          // Geocodificar a cidade usando Nominatim
+          const cityQuery = `${data.localidade}, ${data.uf}, Brazil`;
+          const geoResponse = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityQuery)}`,
+          );
+          const geoData = await geoResponse.json();
+          if (geoData.length > 0) {
+            const lat = parseFloat(geoData[0].lat);
+            const lon = parseFloat(geoData[0].lon);
+            setMapCenter([lat, lon]);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao buscar CEP:", error);
+      }
+    }
+  };
+
   // Handlers de categoria
   const handleCategoryChange = (type: CategoryType) => {
     if (type === "passenger") {
@@ -194,6 +240,7 @@ export default function App() {
         hasPet: false,
         isDelivery: false,
         isMarket: false,
+        hasTrunk: false,
       });
     } else if (type === "pet") {
       setCategories({
@@ -201,6 +248,7 @@ export default function App() {
         hasPet: !categories.hasPet,
         isDelivery: false,
         isMarket: false,
+        hasTrunk: false,
       });
     } else if (type === "delivery") {
       setCategories({
@@ -208,13 +256,15 @@ export default function App() {
         hasPet: false,
         isDelivery: true,
         isMarket: false,
+        hasTrunk: false,
       });
     } else if (type === "market") {
       setCategories({
-        passengers: 0,
+        passengers: 1,
         hasPet: false,
         isDelivery: false,
         isMarket: true,
+        hasTrunk: false,
       });
     }
   };
@@ -222,6 +272,18 @@ export default function App() {
   const adjustPassengers = (delta: number) => {
     const newCount = Math.max(1, Math.min(4, categories.passengers + delta));
     setCategories({ ...categories, passengers: newCount });
+  };
+
+  // Handler de login
+  const handleLogin = () => {
+    // Simulação de login - em produção, implementar autenticação real
+    setIsLoggedIn(true);
+    setScreen("home");
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setScreen("login");
   };
 
   // Handlers de corrida
@@ -252,6 +314,7 @@ export default function App() {
       hasPet: false,
       isDelivery: false,
       isMarket: false,
+      hasTrunk: false,
     });
     setOrigin("");
     setDestination("");
@@ -398,6 +461,29 @@ export default function App() {
                   <CreditCard size={20} className="text-primary" />
                   <span>Pagamento</span>
                 </button>
+                {isLoggedIn ? (
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setShowMenu(false);
+                    }}
+                    className="w-full text-left p-3 hover:bg-muted rounded-lg transition-colors flex items-center gap-3"
+                  >
+                    <User size={20} className="text-primary" />
+                    <span>Sair</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setScreen("login");
+                      setShowMenu(false);
+                    }}
+                    className="w-full text-left p-3 hover:bg-muted rounded-lg transition-colors flex items-center gap-3"
+                  >
+                    <User size={20} className="text-primary" />
+                    <span>Entrar</span>
+                  </button>
+                )}
               </nav>
             </div>
           </>
@@ -406,12 +492,57 @@ export default function App() {
         {/* Conteúdo Principal */}
         <main className="flex-1 overflow-y-auto">
           <div className="flex flex-col">
+            {/* LOGIN */}
+            {screen === "login" && (
+              <div className="flex-1 flex items-center justify-center p-4">
+                <div className="bg-card p-8 rounded-2xl border border-border w-full max-w-md">
+                  <div className="text-center mb-6">
+                    <div className="p-3 bg-primary rounded-full w-fit mx-auto mb-4">
+                      <User className="text-primary-foreground" size={32} />
+                    </div>
+                    <h2 className="text-2xl font-bold">Entrar no VaiComigo</h2>
+                    <p className="text-muted-foreground mt-2">
+                      Faça login para solicitar corridas
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        className="w-full p-3 bg-secondary rounded-lg border border-border"
+                        placeholder="seu@email.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        Senha
+                      </label>
+                      <input
+                        type="password"
+                        className="w-full p-3 bg-secondary rounded-lg border border-border"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                    <button
+                      onClick={handleLogin}
+                      className="w-full bg-primary text-primary-foreground p-3 rounded-lg font-bold hover:bg-primary/90 transition-colors"
+                    >
+                      Entrar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* HOME - Solicitar Corrida */}
             {screen === "home" && rideStatus === "idle" && (
               <>
                 {/* Mapa (acima) */}
                 <div className="h-64 md:h-96 lg:h-[600px] w-full">
-                  <MapPlaceholder />
+                  <MapComponent center={mapCenter} />
                 </div>
 
                 <div className="p-4 space-y-4">
@@ -451,7 +582,7 @@ export default function App() {
                         <Dog className="mx-auto mb-2 text-primary" size={32} />
                         <div className="font-bold text-sm">VaiPet</div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          +R$ {PRICING_CONFIG.petFee.toFixed(2)}
+                          +R$ {PRICING_CONFIG[region].petFee.toFixed(2)}
                         </div>
                       </button>
 
@@ -495,7 +626,7 @@ export default function App() {
                     </div>
 
                     {/* Contador de Passageiros */}
-                    {!categories.isDelivery && !categories.isMarket && (
+                    {!categories.isDelivery && (
                       <div className="bg-secondary p-4 rounded-xl flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
                           Número de passageiros
@@ -522,6 +653,35 @@ export default function App() {
                       </div>
                     )}
 
+                    {/* Opção Porta Malas */}
+                    {categories.isMarket && (
+                      <div className="bg-secondary p-4 rounded-xl flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Usar porta malas (+R${" "}
+                          {PRICING_CONFIG[region].trunkFee.toFixed(2)})
+                        </span>
+                        <button
+                          onClick={() =>
+                            setCategories({
+                              ...categories,
+                              hasTrunk: !categories.hasTrunk,
+                            })
+                          }
+                          className={`p-2 rounded-lg transition-colors ${
+                            categories.hasTrunk
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted hover:bg-muted/80"
+                          }`}
+                        >
+                          {categories.hasTrunk ? (
+                            <Check size={16} />
+                          ) : (
+                            <X size={16} />
+                          )}
+                        </button>
+                      </div>
+                    )}
+
                     {/* Resumo da Seleção */}
                     <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/30">
                       <div className="text-sm text-center">
@@ -539,12 +699,50 @@ export default function App() {
                   <div className="bg-card p-6 rounded-2xl border border-border space-y-4">
                     <h2 className="mb-2">Para onde vamos?</h2>
 
-                    <LocationInput
-                      type="origin"
-                      value={origin}
-                      onChange={setOrigin}
-                      placeholder="Endereço de origem"
-                    />
+                    {!isLoggedIn && (
+                      <div className="bg-muted p-4 rounded-lg text-center">
+                        <p className="text-muted-foreground mb-2">
+                          Faça login para inserir endereços
+                        </p>
+                        <button
+                          onClick={() => setScreen("login")}
+                          className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors"
+                        >
+                          Entrar
+                        </button>
+                      </div>
+                    )}
+
+                    {isLoggedIn && (
+                      <>
+                        {/* CEP */}
+                        <div>
+                          <label className="block text-sm font-medium mb-2">
+                            CEP
+                          </label>
+                          <input
+                            type="text"
+                            value={cep}
+                            onChange={(e) =>
+                              handleCepChange(e.target.value.replace(/\D/g, ""))
+                            }
+                            placeholder="00000-000"
+                            maxLength={8}
+                            className="w-full p-3 bg-secondary rounded-lg border border-border"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Digite o CEP para centralizar o mapa na cidade
+                          </p>
+                        </div>
+
+                        <LocationInput
+                          type="origin"
+                          value={origin}
+                          onChange={setOrigin}
+                          placeholder="Endereço de origem"
+                        />
+                      </>
+                    )}
 
                     {/* Paradas */}
                     {stops.map((stop, index) => (
@@ -573,7 +771,7 @@ export default function App() {
                         <Plus size={18} />
                         <span>
                           Adicionar parada (+R${" "}
-                          {PRICING_CONFIG.stopPointFee.toFixed(2)})
+                          {PRICING_CONFIG[region].stopPointFee.toFixed(2)})
                         </span>
                       </button>
                     )}
@@ -645,7 +843,8 @@ export default function App() {
                             <span className="font-medium">
                               +R${" "}
                               {(
-                                stops.length * PRICING_CONFIG.stopPointFee
+                                stops.length *
+                                PRICING_CONFIG[region].stopPointFee
                               ).toFixed(2)}
                             </span>
                           </div>
