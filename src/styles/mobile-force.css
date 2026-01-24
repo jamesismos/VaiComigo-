@@ -1,0 +1,79 @@
+/* Mobile Force View - Simula visualização mobile no navegador desktop */
+/* Adicione esta classe ao body ou container principal para forçar visualização mobile */
+
+.mobile-force-view {
+  max-width: 375px !important; /* Largura típica de iPhone */
+  margin: 0 auto !important;
+  border: 2px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  min-height: 100vh !important;
+  overflow-x: auto !important;
+  background: #0b0b0b !important; /* Fundo escuro para simular mobile */
+}
+
+/* Para dispositivos muito pequenos */
+@media (max-width: 400px) {
+  .mobile-force-view {
+    max-width: 100% !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Simula notch/status bar do iPhone */
+.mobile-force-view::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 375px;
+  height: 44px; /* Altura da status bar */
+  background: linear-gradient(180deg, #000 0%, #1a1a1a 100%);
+  z-index: 9999;
+  border-radius: 12px 12px 0 0;
+  pointer-events: none;
+}
+
+/* Ajusta o conteúdo para não ficar atrás da status bar simulada */
+.mobile-force-view .mobile-content {
+  padding-top: 44px !important;
+}
+
+/* Simula home indicator do iPhone */
+.mobile-force-view::after {
+  content: "";
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 134px;
+  height: 5px;
+  background: #1a1a1a;
+  border-radius: 2.5px;
+  z-index: 9999;
+  margin-bottom: 8px;
+}
+
+/* Classe utilitária para toggle */
+.force-mobile {
+  transition: all 0.3s ease !important;
+}
+
+/* Animação de entrada */
+.force-mobile.mobile-force-view {
+  animation: slideInMobile 0.3s ease-out;
+}
+
+@keyframes slideInMobile {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

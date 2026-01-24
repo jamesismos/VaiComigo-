@@ -5,6 +5,7 @@ APP DE MOBILIDADE URBANA CARAIO
 ## 🚗 Sobre o VaiComigo
 
 VaiComigo é um aplicativo de mobilidade inteligente com múltiplas categorias:
+
 - **VaiComigo!** - Transporte de passageiros (1-4 pessoas)
 - **VaiPet** - Transporte com animais de estimação
 - **VaiEntrega** - Entregas até 20kg
@@ -13,22 +14,26 @@ VaiComigo é um aplicativo de mobilidade inteligente com múltiplas categorias:
 ## ✨ Funcionalidades
 
 ### ✅ Sistema de Categorias Combinadas
+
 - Escolha entre 4 tipos de serviço
 - Combine passageiros + pet
 - Ajuste número de passageiros (1-4)
 
 ### ✅ Sistema de Paradas
+
 - Adicione até 3 paradas intermediárias
 - Cada parada adiciona R$ 3,00
 - Remova paradas facilmente
 
 ### ✅ Sistema de Cupons
+
 - PRIMEIRA - 10% OFF primeira corrida
 - VAIPET20 - 20% OFF em corridas com pet
 - MERCADO15 - 15% OFF no VaiMercado
 - FIXO5 - R$ 5 OFF em corridas acima de R$ 20
 
 ### 📱 Progressive Web App (PWA)
+
 - Instalável em dispositivos móveis
 - Funciona offline
 - Notificações push
@@ -47,10 +52,12 @@ VaiComigo é um aplicativo de mobilidade inteligente com múltiplas categorias:
 ## 🚀 Como executar
 
 ### Pré-requisitos
+
 - Node.js 18+
 - npm ou yarn
 
 ### Instalação
+
 ```bash
 # Clone o repositório
 git clone https://github.com/jamesismos/VaiComigo-.git
@@ -64,6 +71,7 @@ npm run dev
 ```
 
 ### Build para produção
+
 ```bash
 npm run build
 ```
@@ -71,6 +79,7 @@ npm run build
 ## 📱 Como usar como PWA
 
 ### No Android (Chrome/Edge):
+
 1. Abra o app no navegador
 2. Toque no menu (⋮)
 3. Selecione "Adicionar à tela inicial"
@@ -78,6 +87,7 @@ npm run build
 5. O ícone aparecerá na sua tela inicial como um app nativo!
 
 ### No iOS (Safari):
+
 1. Abra o app no Safari
 2. Toque no botão "Compartilhar" (□↑)
 3. Role e toque em "Adicionar à Tela de Início"
@@ -85,6 +95,7 @@ npm run build
 5. Use como um app normal!
 
 ### No Desktop (Chrome/Edge):
+
 1. Abra o app no navegador
 2. Clique no ícone de instalação (+) na barra de endereço
 3. Clique em "Instalar"
@@ -93,6 +104,7 @@ npm run build
 ## 🔮 Futuro: iOS e Android
 
 Este projeto está preparado para ser encapsulado em apps nativos usando:
+
 - **Capacitor** - Framework para desenvolvimento híbrido
 - **React Native** - Para apps nativos (futuramente)
 
