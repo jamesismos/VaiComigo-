@@ -1,8 +1,3 @@
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
 import { SignedIn, SignedOut, SignInButton, UserButton, useSignIn } from "@clerk/clerk-react";
 
 export default function Auth() {
