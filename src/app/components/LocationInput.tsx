@@ -1,175 +1,199 @@
-import { MapPin, Navigation, X, Search, Locate } from "lucide-react";
-import { useState, useEffect } from "react";
-// import GooglePlacesAutocomplete from 'react-google-places-autocomplete';
+import { useEffect, useRef, useState } from "react";
+import { Locate, MapPin, Navigation, X } from "lucide-react";
+import { useGeolocation } from "../hooks/useGeolocation";
+import {
+  reverseMapboxGeocode,
+  searchMapboxAddresses,
+  type RouteStop,
+  type ValidatedAddress,
+} from "@/domains/maps/mapboxService";
 
 interface LocationInputProps {
   type: "origin" | "destination" | "stop";
   value: string;
   onChange: (value: string) => void;
+  onValidatedChange?: (value: RouteStop | null) => void;
   placeholder: string;
   onRemove?: () => void;
-}
-
-interface ViaCepResponse {
-  cep: string;
-  logradouro: string;
-  complemento: string;
-  bairro: string;
-  localidade: string;
-  uf: string;
-  erro?: boolean;
 }
 
 export function LocationInput({
   type,
   value,
   onChange,
+  onValidatedChange,
   placeholder,
   onRemove,
 }: LocationInputProps) {
   const Icon = type === "origin" ? Navigation : MapPin;
-  const [cep, setCep] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const { getCurrentPosition } = useGeolocation();
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [suggestions, setSuggestions] = useState<ValidatedAddress[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
-    null,
-  );
-
-  // Função para buscar CEP via ViaCEP
-  const fetchCep = async (cepValue: string) => {
-    if (cepValue.length === 8 && /^\d+$/.test(cepValue)) {
-      try {
-        const response = await fetch(
-          `https://viacep.com.br/ws/${cepValue}/json/`,
-        );
-        const data: ViaCepResponse = await response.json();
-        if (!data.erro) {
-          const address = `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`;
-          setSuggestions([address]);
-          setShowSuggestions(true);
-        } else {
-          setSuggestions([]);
-          setShowSuggestions(false);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar CEP:", error);
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  };
+  const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (cep) fetchCep(cep);
-    }, 500); // Debounce
-    return () => clearTimeout(timeoutId);
-  }, [cep]);
+    const searchTimeout = window.setTimeout(async () => {
+      if (value.length < 3) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setError(null);
+        onValidatedChange?.(null);
+        return;
+      }
 
-  const handleSuggestionClick = (suggestion: string) => {
-    onChange(suggestion);
-    setCep("");
-    setSuggestions([]);
+      setIsSearching(true);
+      setError(null);
+      try {
+        const results = await searchMapboxAddresses(value, 5);
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+        if (results.length === 0) {
+          onValidatedChange?.(null);
+          setError("Endereco nao validado. Escolha uma sugestao do Mapbox.");
+        }
+      } catch (searchError) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        onValidatedChange?.(null);
+        setError(searchError instanceof Error ? searchError.message : "Falha ao buscar endereco.");
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
+
+    return () => window.clearTimeout(searchTimeout);
+  }, [onValidatedChange, value]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectAddress = (address: ValidatedAddress) => {
+    onChange(address.fullAddress);
+    onValidatedChange?.({ ...address, kind: type });
     setShowSuggestions(false);
+    setSuggestions([]);
+    setError(address.confidence === "low" ? "Confirme se este endereco esta correto antes de continuar." : null);
   };
 
-  // Função para obter geolocalização
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setLocation({ lat: latitude, lng: longitude });
-          // Aqui você pode usar uma API reversa para obter endereço
-          onChange(`Lat: ${latitude}, Lng: ${longitude}`);
-        },
-        (error) => {
-          console.error("Erro ao obter localização:", error);
-          alert("Permissão de localização negada ou erro.");
-        },
+  const handleGetCurrentLocation = async () => {
+    setIsGettingLocation(true);
+    setError(null);
+    try {
+      const position = await getCurrentPosition();
+      const address = await reverseMapboxGeocode({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      });
+      selectAddress(address);
+    } catch (locationError) {
+      onValidatedChange?.(null);
+      setError(
+        locationError instanceof Error
+          ? locationError.message
+          : "Nao foi possivel obter sua localizacao.",
       );
-    } else {
-      alert("Geolocalização não suportada pelo navegador.");
+    } finally {
+      setIsGettingLocation(false);
     }
   };
 
   return (
     <div className="relative">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary">
+      <label className="sr-only" htmlFor={`${type}-input`}>
+        {placeholder}
+      </label>
+      <div className="absolute left-4 top-7 -translate-y-1/2 text-primary z-10">
         <Icon size={20} />
       </div>
-      {/* Autocompletar com Google Places - TEMPORARIAMENTE DESABILITADO */}
-      {/* <GooglePlacesAutocomplete
-        apiKey={import.meta.env.VITE_GOOGLE_MAPS_KEY}
-        selectProps={{
-          value,
-          onChange: (val) => onChange(val?.label || ""),
-          placeholder,
-          styles: {
-            control: (provided) => ({
-              ...provided,
-              border: '1px solid #ccc',
-              borderRadius: '0.5rem',
-              padding: '0.5rem 0.75rem',
-              fontSize: '1rem',
-            }),
-          },
-        }}
-      /> */}
       <input
+        id={`${type}-input`}
+        ref={inputRef}
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => {
+          onChange(event.target.value);
+          onValidatedChange?.(null);
+        }}
+        onFocus={() => setShowSuggestions(suggestions.length > 0)}
         placeholder={placeholder}
-        className="w-full pl-12 pr-4 py-4 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+        aria-invalid={!!error}
+        aria-describedby={error ? `${type}-error` : undefined}
+        className="w-full pl-12 pr-20 py-4 bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
       />
-      {/* Campo para CEP */}
-      <div className="mt-2 relative">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary">
-          <Search size={20} />
-        </div>
-        <input
-          type="text"
-          value={cep}
-          onChange={(e) =>
-            setCep(e.target.value.replace(/\D/g, "").slice(0, 8))
-          }
-          placeholder="Digite o CEP para sugestão"
-          className="w-full pl-12 pr-4 py-2 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all text-sm"
-        />
-        {showSuggestions && suggestions.length > 0 && (
-          <ul className="absolute z-10 w-full bg-card border border-border rounded-lg mt-1 max-h-40 overflow-y-auto">
-            {suggestions.map((suggestion, index) => (
-              <li
-                key={index}
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="px-4 py-2 hover:bg-muted cursor-pointer"
-              >
-                {suggestion}
-              </li>
-            ))}
-          </ul>
+      <div className="absolute right-4 top-7 -translate-y-1/2 flex items-center gap-2 z-10">
+        {type !== "stop" && (
+          <button
+            type="button"
+            onClick={handleGetCurrentLocation}
+            disabled={isGettingLocation}
+            className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Usar minha localizacao atual"
+            title="Usar minha localizacao"
+          >
+            <Locate size={18} className={isGettingLocation ? "animate-spin" : ""} />
+          </button>
+        )}
+        {type === "stop" && onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Remover parada"
+          >
+            <X size={20} />
+          </button>
         )}
       </div>
-      {/* Botão para geolocalização */}
-      <button
-        onClick={getCurrentLocation}
-        className="mt-2 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
-      >
-        <Locate size={16} />
-        Usar Minha Localização
-      </button>
-      {type === "stop" && onRemove && (
-        <button
-          onClick={onRemove}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Remover parada"
+
+      {showSuggestions && (
+        <div
+          ref={suggestionsRef}
+          className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto"
         >
-          <X size={20} />
-        </button>
+          {isSearching && <div className="p-3 text-sm text-muted-foreground text-center">Buscando...</div>}
+          {suggestions.map((suggestion) => (
+            <button
+              type="button"
+              key={suggestion.id}
+              onClick={() => selectAddress(suggestion)}
+              className="w-full text-left p-3 hover:bg-muted transition-colors border-b border-border last:border-b-0"
+            >
+              <div className="flex items-start gap-2">
+                <MapPin size={16} className="text-primary mt-1 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-foreground">{suggestion.label}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{suggestion.fullAddress}</div>
+                  {suggestion.confidence === "low" && (
+                    <div className="text-xs text-primary mt-1">Confirmacao recomendada</div>
+                  )}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <p id={`${type}-error`} className="mt-2 text-xs text-[#ffb4ab]">
+          {error}
+        </p>
       )}
     </div>
   );

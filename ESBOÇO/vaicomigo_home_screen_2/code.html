@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Chat com Motorista VaiComigo</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0F5F4A",
+                        "background-dark": "#0B0B0B",
+                        "text-offwhite": "#ECECEC",
+                        "bubble-dark": "#1A1A1A"
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    }
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-dark text-text-offwhite min-h-screen flex flex-col overflow-hidden">
+<header class="fixed top-0 left-0 right-0 z-50 bg-background-dark/90 backdrop-blur-md border-b border-white/5">
+<div class="flex items-center px-4 py-3 gap-3">
+<button class="size-10 flex items-center justify-center rounded-full hover:bg-white/5">
+<span class="material-symbols-outlined text-text-offwhite">arrow_back_ios_new</span>
+</button>
+<div class="flex-1 flex items-center gap-3">
+<div class="relative">
+<img alt="Ricardo" class="size-10 rounded-full object-cover border border-white/10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdloy5gP7nJW5uo1ms6ThF9zyv-Jb6h0D06MxOBMEZ06OmS0TssY-l3vFY4oV2n16SPVk24bXX06O7p0V-H3Mnf9MJo2DVs6bS5oF9sh4VYCZrGKZlbW9Sa3T0SNwP9hjvNBAk3E_vcsI15lSRKOkt-qn5oA3xkIFDQHkKmuHEDQNUkWZeM3cY2V2VCmD51-fMFmceGpiRmS1Q_fCbOWVV1TtJ3nFpA-kdUQe7xTqv2x0AbG07Ygkzmy7Z5Muk9Ff-TeVdLsfozbFP"/>
+<div class="absolute -bottom-1 -right-1 bg-primary size-5 rounded-full flex items-center justify-center border-2 border-background-dark">
+<span class="material-symbols-outlined text-[10px] text-white fill-1">directions_car</span>
+</div>
+</div>
+<div>
+<h1 class="text-sm font-bold leading-none">Ricardo</h1>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-xs text-yellow-500 fill-1">star</span>
+<span class="text-[11px] text-gray-400">4.9 • Toyota Corolla Preto</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="size-10 flex items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined">call</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto px-4 pt-20 pb-40 space-y-4">
+<div class="flex justify-center my-4">
+<span class="text-[10px] uppercase tracking-wider text-gray-500 font-bold bg-white/5 px-3 py-1 rounded-full">Hoje</span>
+</div>
+<div class="flex flex-col items-start max-w-[80%]">
+<div class="bg-bubble-dark text-text-offwhite p-3 rounded-2xl rounded-tl-none text-sm leading-relaxed">
+                Olá! Já estou a caminho do local de embarque. Chego em 3 minutos.
+            </div>
+<span class="text-[10px] text-gray-500 mt-1 ml-1">14:02</span>
+</div>
+<div class="flex flex-col items-end ml-auto max-w-[80%]">
+<div class="bg-primary text-text-offwhite p-3 rounded-2xl rounded-tr-none text-sm leading-relaxed shadow-lg">
+                Combinado, Ricardo! Estarei aguardando na calçada.
+            </div>
+<div class="flex items-center gap-1 mt-1 mr-1">
+<span class="text-[10px] text-gray-500">14:03</span>
+<span class="material-symbols-outlined text-primary text-[14px]">done_all</span>
+</div>
+</div>
+<div class="flex flex-col items-start max-w-[80%]">
+<div class="bg-bubble-dark text-text-offwhite p-3 rounded-2xl rounded-tl-none text-sm leading-relaxed">
+                Perfeito. O trânsito está um pouco carregado na Av. Paulista, mas já estou dobrando a esquina.
+            </div>
+<span class="text-[10px] text-gray-500 mt-1 ml-1">14:05</span>
+</div>
+</main>
+<div class="fixed bottom-0 left-0 right-0 bg-background-dark/95 backdrop-blur-xl pb-8 border-t border-white/5">
+<div class="flex gap-2 px-4 py-3 overflow-x-auto hide-scrollbar">
+<button class="whitespace-nowrap bg-white/5 hover:bg-white/10 border border-white/10 text-text-offwhite text-xs font-semibold px-4 py-2 rounded-full transition-colors">
+                Tudo bem!
+            </button>
+<button class="whitespace-nowrap bg-white/5 hover:bg-white/10 border border-white/10 text-text-offwhite text-xs font-semibold px-4 py-2 rounded-full transition-colors">
+                Estou descendo
+            </button>
+<button class="whitespace-nowrap bg-white/5 hover:bg-white/10 border border-white/10 text-text-offwhite text-xs font-semibold px-4 py-2 rounded-full transition-colors">
+                Pode parar na frente
+            </button>
+<button class="whitespace-nowrap bg-white/5 hover:bg-white/10 border border-white/10 text-text-offwhite text-xs font-semibold px-4 py-2 rounded-full transition-colors">
+                Estou aqui
+            </button>
+</div>
+<div class="px-4 flex items-center gap-3">
+<button class="size-11 flex items-center justify-center text-gray-400 hover:text-text-offwhite">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<div class="flex-1 bg-[#1a1a1a] rounded-2xl border border-white/10 flex items-center px-4 h-11">
+<input class="bg-transparent border-none focus:ring-0 text-sm text-text-offwhite w-full placeholder:text-gray-500" placeholder="Mensagem..." type="text"/>
+<button class="text-gray-400 hover:text-text-offwhite">
+<span class="material-symbols-outlined">sentiment_satisfied</span>
+</button>
+</div>
+<button class="size-11 flex items-center justify-center bg-primary rounded-full shadow-lg text-white active:scale-95 transition-transform">
+<span class="material-symbols-outlined fill-1">send</span>
+</button>
+</div>
+</div>
+
+</body></html>

@@ -1,38 +1,57 @@
-import { SignedIn, SignedOut, SignInButton, UserButton, useSignIn } from "@clerk/clerk-react";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/clerk-react";
+import { User } from "lucide-react";
+import { ClerkWrapper } from "./ClerkWrapper";
 
-export default function Auth() {
-  const { signIn } = useSignIn();
+// Verificar se Clerk está disponível através da variável de ambiente
+const HAS_CLERK = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-  const handleGoogleSignIn = () => {
-    signIn?.authenticateWithRedirect({
-      strategy: "oauth_google",
-      redirectUrl: "/sso-callback",
-      redirectUrlComplete: "/",
-    });
-  };
-
+// Componente de fallback quando Clerk não está disponível
+function DevModeAuth() {
   return (
     <div className="flex items-center gap-2">
-      <SignedOut>
-        <div className="flex items-center gap-2">
-          <SignInButton className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors" />
-          <button
-            onClick={handleGoogleSignIn}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Login com Google
-          </button>
-        </div>
-      </SignedOut>
-      <SignedIn>
-        <UserButton />
-      </SignedIn>
+      <div className="px-4 py-2 bg-muted text-muted-foreground rounded-lg text-sm flex items-center gap-2">
+        <User size={16} />
+        <span>Modo Desenvolvimento</span>
+      </div>
     </div>
+  );
+}
+
+// Componente principal que decide qual renderizar
+export default function Auth() {
+  // Se não houver chave do Clerk, mostrar modo de desenvolvimento
+  if (!HAS_CLERK) {
+    return <DevModeAuth />;
+  }
+
+  // Se houver chave, usar ClerkWrapper para verificar se Clerk está disponível em runtime
+  return (
+    <ClerkWrapper
+      fallback={<DevModeAuth />}
+    >
+      <div className="flex items-center gap-2">
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
+              Entrar
+            </button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <button className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors">
+              Cadastrar
+            </button>
+          </SignUpButton>
+        </SignedOut>
+        <SignedIn>
+          <UserButton />
+        </SignedIn>
+      </div>
+    </ClerkWrapper>
   );
 }

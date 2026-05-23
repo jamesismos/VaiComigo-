@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tela Inicial Atualizada VaiPet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f614b",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#0B0B0B",
+                        "text-offwhite": "#ECECEC"
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-[#111716] dark:text-text-offwhite min-h-screen flex flex-col overflow-x-hidden">
+<div class="fixed top-0 left-0 right-0 z-50 bg-background-dark/80 backdrop-blur-md">
+<div class="flex items-center p-4 pb-2 justify-between">
+<div class="text-text-offwhite flex size-12 shrink-0 items-center">
+<span class="material-symbols-outlined text-2xl">menu</span>
+</div>
+<h2 class="text-text-offwhite text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center font-display">VaiComigo</h2>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 bg-transparent text-text-offwhite gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<span class="material-symbols-outlined text-2xl">account_circle</span>
+</button>
+</div>
+</div>
+</div>
+<div class="relative w-full h-[45vh] mt-16">
+<div class="w-full h-full bg-center bg-no-repeat bg-cover object-cover" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBC4wqYuj-VozXYOzwcOkwp4IRnrQ7gbMdq3n9qn3LQYonOzq9mTNgl6eJzd8OTC309zrZaspdOF9meMemXeijrzkgeJKc78FSw_sSen84lY3UGkkL8RAcWUKLSJ10RTiy20-C9fgg6Cxec-SH5UcyfkGof2FL_3oey5_n9s3vkny9M481kUEJRsTFlQF5mwv95uUBFKd6-G0_tcv26zCyIO5ttauaxKgH7-FSTO5ssAgAm5wITWaR4JyK4sDwsrnnuiU0kcaqd9xNo"); filter: grayscale(1) brightness(0.6) contrast(1.2);'>
+</div>
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="relative">
+<div class="absolute -inset-4 bg-primary/30 rounded-full animate-pulse"></div>
+<div class="relative bg-primary border-2 border-white size-5 rounded-full shadow-lg"></div>
+</div>
+</div>
+</div>
+<div class="relative -mt-6 bg-background-dark rounded-t-3xl flex-1 px-4 pt-6 pb-40">
+<div class="w-12 h-1.5 bg-gray-700 rounded-full mx-auto mb-6"></div>
+<div class="space-y-3">
+<label class="flex flex-col min-w-40 h-14 w-full">
+<div class="flex w-full flex-1 items-stretch rounded-xl h-full shadow-lg overflow-hidden border border-white/5">
+<div class="text-[#9eb7b1] flex border-none bg-[#1a1a1a] items-center justify-center pl-4">
+<span class="material-symbols-outlined text-2xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden text-text-offwhite focus:outline-0 focus:ring-0 border-none bg-[#1a1a1a] h-full placeholder:text-[#9eb7b1] px-4 text-base font-normal leading-normal" placeholder="Para onde vamos?" value=""/>
+</div>
+</label>
+<div class="flex justify-end">
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary/10 text-primary gap-2 text-sm font-bold leading-normal hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-lg">add</span>
+<span class="truncate">Parada</span>
+</button>
+</div>
+</div>
+<div class="mt-8">
+<h3 class="text-text-offwhite text-lg font-bold leading-tight tracking-[-0.015em] mb-4 font-display">Nossos Serviços</h3>
+<div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 -mx-1 px-1">
+<div class="flex flex-col items-center justify-between min-w-[100px] aspect-[4/5] p-3 rounded-2xl bg-primary border-2 border-primary shadow-xl cursor-pointer">
+<span class="material-symbols-outlined text-3xl text-white">directions_car</span>
+<span class="text-xs font-bold text-white text-center">VaiComigo!</span>
+<span class="text-[10px] text-white/80">1-4 pessoas</span>
+</div>
+<div class="flex flex-col items-center justify-between min-w-[100px] aspect-[4/5] p-3 rounded-2xl bg-[#1a1a1a] border-2 border-transparent hover:border-primary/50 transition-all cursor-pointer">
+<div class="flex items-center justify-center -space-x-2">
+<span class="material-symbols-outlined text-2xl text-primary">person</span>
+<span class="material-symbols-outlined text-2xl text-primary">pets</span>
+</div>
+<span class="text-xs font-bold text-text-offwhite text-center">Passageiro + Pet</span>
+<span class="text-[10px] text-gray-500">Amigável a pets</span>
+</div>
+<div class="flex flex-col items-center justify-between min-w-[100px] aspect-[4/5] p-3 rounded-2xl bg-[#1a1a1a] border-2 border-transparent hover:border-primary/50 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-3xl text-primary">package_2</span>
+<span class="text-xs font-bold text-text-offwhite text-center">VaiEntrega</span>
+<span class="text-[10px] text-gray-500">Entregas</span>
+</div>
+<div class="flex flex-col items-center justify-between min-w-[100px] aspect-[4/5] p-3 rounded-2xl bg-[#1a1a1a] border-2 border-transparent hover:border-primary/50 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-3xl text-primary">shopping_cart</span>
+<span class="text-xs font-bold text-text-offwhite text-center">VaiMercado</span>
+<span class="text-[10px] text-gray-500">Mercado</span>
+</div>
+</div>
+</div>
+<div class="mt-4 space-y-4">
+<div class="flex items-center gap-4 py-2">
+<div class="size-10 rounded-full bg-[#1a1a1a] flex items-center justify-center text-gray-400">
+<span class="material-symbols-outlined">history</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-text-offwhite">Av. Paulista, 1000</p>
+<p class="text-xs text-gray-500">Bela Vista, São Paulo</p>
+</div>
+<span class="material-symbols-outlined text-gray-600">chevron_right</span>
+</div>
+<div class="flex items-center gap-4 py-2 border-t border-white/5">
+<div class="size-10 rounded-full bg-[#1a1a1a] flex items-center justify-center text-gray-400">
+<span class="material-symbols-outlined">home</span>
+</div>
+<div class="flex-1">
+<p class="text-sm font-bold text-text-offwhite">Casa</p>
+<p class="text-xs text-gray-500">Rua Oscar Freire, 204</p>
+</div>
+<span class="material-symbols-outlined text-gray-600">chevron_right</span>
+</div>
+</div>
+</div>
+<div class="fixed bottom-0 left-0 right-0 bg-background-dark/95 backdrop-blur-lg border-t border-white/5 p-4 pb-8 z-50">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-[0.98] mb-4">
+            Pedir Agora
+        </button>
+<div class="flex justify-around items-center pt-2">
+<div class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined fill-1">home</span>
+<span class="text-[10px] font-bold">Início</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-gray-500">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-[10px] font-medium">Atividade</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-gray-500">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Perfil</span>
+</div>
+</div>
+</div>
+
+</body></html>

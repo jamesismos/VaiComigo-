@@ -21,9 +21,20 @@ import {
   Minus,
   Smartphone,
   Check,
+  MessageCircle,
+  ClipboardList,
 } from "lucide-react";
 import { LocationInput } from "@/app/components/LocationInput";
-import { MapComponent } from "@/app/components/MapPlaceholder";
+import { Map } from "@/app/components/Map";
+import { PaymentMethods } from "@/app/components/PaymentMethods";
+import { DriverCard } from "@/app/components/DriverCard";
+import { RideStatusBadge } from "@/app/components/RideStatusBadge";
+import { RouteDisplay } from "@/app/components/RouteDisplay";
+import { Chat } from "@/app/components/Chat";
+import { VaiPetPreferences } from "@/app/components/VaiPetPreferences";
+import { BottomNavigation } from "@/app/components/BottomNavigation";
+import { DriverRegistration } from "@/app/components/DriverRegistration";
+import { AdminDashboard } from "@/domains/admin/AdminDashboard";
 import {
   PRICING_CONFIG,
   CategorySelection,
@@ -31,6 +42,7 @@ import {
   RideStatus,
   CategoryType,
   RegionType,
+  getPricingForCity,
 } from "@/app/config/pricing";
 import {
   calculateRoute,
@@ -40,8 +52,18 @@ import {
   validateCoupon,
 } from "@/app/utils/calculations";
 import Auth from "@/components/Auth";
+import { useLocationStore, useCategoryStore, useRideStore, useDriverStore } from "@/store";
+import { Driver } from "@/types";
+import { getInitialCity, validateRouteInsideCity } from "@/domains/cities/cityConfig";
+import type { RouteStop } from "@/domains/maps/mapboxService";
 
 export default function App() {
+  // Stores Zustand
+  const locationStore = useLocationStore();
+  const categoryStore = useCategoryStore();
+  const rideStore = useRideStore();
+  const driverStore = useDriverStore();
+
   // Estados principais
   const [screen, setScreen] = useState<
     | "home"
@@ -51,47 +73,50 @@ export default function App() {
     | "coupons"
     | "payment"
     | "login"
+    | "chat"
+    | "vaipet-preferences"
+    | "driver-registration"
+    | "admin"
   >("home");
   const [showMenu, setShowMenu] = useState(false);
   const [forceMobile, setForceMobile] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Estados de categoria
-  const [categories, setCategories] = useState<CategorySelection>({
-    passengers: 1,
-    hasPet: false,
-    isDelivery: false,
-    isMarket: false,
-    hasTrunk: false,
-  });
-
-  // Estado da região
-  const [region, setRegion] = useState<RegionType>("vale-jequitinhonha");
-
-  // Estados de geolocalização
+  // Estados locais (para compatibilidade durante migração)
   const [cep, setCep] = useState("");
   const [mapCenter, setMapCenter] = useState<[number, number]>([
     -18.5122, -44.555,
   ]); // Vale do Jequitinhonha
-
-  // Estados da corrida
   const [origin, setOrigin] = useState("");
   const [destination, setDestination] = useState("");
   const [stops, setStops] = useState<string[]>([]);
+  const [validatedOrigin, setValidatedOrigin] = useState<RouteStop | null>(null);
+  const [validatedDestination, setValidatedDestination] = useState<RouteStop | null>(null);
+  const [validatedStops, setValidatedStops] = useState<Array<RouteStop | null>>([]);
   const [routeInfo, setRouteInfo] = useState<{
     distance: string;
     duration: number;
+    distanceKm?: number;
   } | null>(null);
+  const [routeGeometry, setRouteGeometry] = useState<GeoJSON.LineString | null>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
   const [totalPrice, setTotalPrice] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
-
-  // Estados do fluxo
-  const [rideStatus, setRideStatus] = useState<RideStatus>("idle");
   const [rating, setRating] = useState(0);
   const [ratingComment, setRatingComment] = useState("");
 
-  // Mock de motorista
-  const mockDriver = {
+  // Usar stores
+  const categories = categoryStore.categories;
+  const region = categoryStore.region;
+  const rideStatus = rideStore.currentRide?.status || "idle";
+
+  // Obter preços baseado na localização (origem ou destino)
+  const pricingConfig = origin || destination
+    ? getPricingForCity(origin || destination)
+    : PRICING_CONFIG;
+
+  // Mock de motorista (convertido para tipo Driver)
+  const mockDriver: Driver = {
     id: 1,
     name: "Carlos Mendes",
     rating: 4.9,
@@ -100,6 +125,9 @@ export default function App() {
     plate: "ABC-1234",
     photo: "👨‍💼",
     phone: "(31) 99999-9999",
+    price: 0,
+    time: 0,
+    car_seats: 4,
   };
 
   // Mock de corridas anteriores
@@ -178,32 +206,76 @@ export default function App() {
 
   // Calcular rota e preço quando os dados mudarem
   useEffect(() => {
-    if (origin && destination) {
-      const route = calculateRoute(origin, destination, stops.length);
-      setRouteInfo(route);
-      const price = calculatePrice(route, categories, stops.length, region);
-      setTotalPrice(price);
-    } else {
-      setRouteInfo(null);
-      setTotalPrice(0);
-    }
-  }, [origin, destination, stops, categories, region]);
+    let cancelled = false;
+
+    const updateRouteAndPrice = async () => {
+      if (!validatedOrigin || !validatedDestination) {
+        setRouteInfo(null);
+        setRouteGeometry(null);
+        setTotalPrice(0);
+        setRouteError(origin || destination ? "Selecione origem e destino validados pelo Mapbox." : null);
+        return;
+      }
+
+      const selectedStops = validatedStops.filter(Boolean) as RouteStop[];
+      const points = [validatedOrigin, ...selectedStops, validatedDestination];
+      const city = getInitialCity();
+      const cityValidation = validateRouteInsideCity(city, points);
+
+      if (!cityValidation.valid) {
+        setRouteInfo(null);
+        setRouteGeometry(null);
+        setTotalPrice(0);
+        setRouteError(cityValidation.message ?? "Corrida fora da area ativa.");
+        return;
+      }
+
+      try {
+        setRouteError(null);
+        const route = await calculateRoute(points);
+        if (cancelled) return;
+        setRouteInfo(route);
+        setRouteGeometry(route.geometry);
+        setTotalPrice(calculatePrice(route, categories, selectedStops.length));
+      } catch (error) {
+        if (cancelled) return;
+        setRouteInfo(null);
+        setRouteGeometry(null);
+        setTotalPrice(0);
+        setRouteError(error instanceof Error ? error.message : "Nao foi possivel calcular a rota real.");
+      }
+    };
+
+    void updateRouteAndPrice();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [origin, destination, validatedOrigin, validatedDestination, validatedStops, categories]);
 
   // Handlers de paradas
   const handleAddStop = () => {
     if (stops.length < 3) {
       setStops([...stops, ""]);
+      setValidatedStops([...validatedStops, null]);
     }
   };
 
   const handleRemoveStop = (index: number) => {
     setStops(stops.filter((_, i) => i !== index));
+    setValidatedStops(validatedStops.filter((_, i) => i !== index));
   };
 
   const handleUpdateStop = (index: number, value: string) => {
     const newStops = [...stops];
     newStops[index] = value;
     setStops(newStops);
+  };
+
+  const handleValidatedStop = (index: number, value: RouteStop | null) => {
+    const newStops = [...validatedStops];
+    newStops[index] = value;
+    setValidatedStops(newStops);
   };
 
   // Handler de CEP
@@ -233,10 +305,10 @@ export default function App() {
     }
   };
 
-  // Handlers de categoria
+  // Handlers de categoria (usando store)
   const handleCategoryChange = (type: CategoryType) => {
     if (type === "passenger") {
-      setCategories({
+      categoryStore.setCategories({
         passengers: 1,
         hasPet: false,
         isDelivery: false,
@@ -244,7 +316,7 @@ export default function App() {
         hasTrunk: false,
       });
     } else if (type === "pet") {
-      setCategories({
+      categoryStore.setCategories({
         ...categories,
         hasPet: !categories.hasPet,
         isDelivery: false,
@@ -252,7 +324,7 @@ export default function App() {
         hasTrunk: false,
       });
     } else if (type === "delivery") {
-      setCategories({
+      categoryStore.setCategories({
         passengers: 0,
         hasPet: false,
         isDelivery: true,
@@ -260,7 +332,7 @@ export default function App() {
         hasTrunk: false,
       });
     } else if (type === "market") {
-      setCategories({
+      categoryStore.setCategories({
         passengers: 1,
         hasPet: false,
         isDelivery: false,
@@ -272,7 +344,7 @@ export default function App() {
 
   const adjustPassengers = (delta: number) => {
     const newCount = Math.max(1, Math.min(4, categories.passengers + delta));
-    setCategories({ ...categories, passengers: newCount });
+    categoryStore.setCategories({ ...categories, passengers: newCount });
   };
 
   // Handler de login
@@ -287,40 +359,41 @@ export default function App() {
     setScreen("login");
   };
 
-  // Handlers de corrida
+  // Handlers de corrida (usando store)
   const handleRequestRide = () => {
-    if (origin && destination && routeInfo) {
-      setRideStatus("searching");
+    if (validatedOrigin && validatedDestination && routeInfo && totalPrice > 0) {
+      rideStore.updateRideStatus("searching");
+      rideStore.setRideDriver(mockDriver);
       setTimeout(() => {
-        setRideStatus("accepted");
+        rideStore.updateRideStatus("accepted");
         setScreen("ride-progress");
       }, 2000);
     }
   };
 
   const handleStartRide = () => {
-    setRideStatus("ongoing");
+    rideStore.updateRideStatus("ongoing");
   };
 
   const handleCompleteRide = () => {
-    setRideStatus("completed");
+    rideStore.updateRideStatus("completed");
     setScreen("rating");
   };
 
   const handleSubmitRating = () => {
-    // Reset
-    setRideStatus("idle");
-    setCategories({
-      passengers: 1,
-      hasPet: false,
-      isDelivery: false,
-      isMarket: false,
-      hasTrunk: false,
-    });
+    // Reset usando stores
+    rideStore.clearCurrentRide();
+    categoryStore.resetCategories();
+    locationStore.clearAll();
     setOrigin("");
     setDestination("");
     setStops([]);
+    setValidatedOrigin(null);
+    setValidatedDestination(null);
+    setValidatedStops([]);
     setRouteInfo(null);
+    setRouteGeometry(null);
+    setRouteError(null);
     setTotalPrice(0);
     setAppliedCoupon(null);
     setRating(0);
@@ -344,64 +417,34 @@ export default function App() {
     setAppliedCoupon(null);
   };
 
-  // Badge de status
-  const RideStatusBadge = () => {
-    const statusConfig = {
-      searching: { text: "Procurando motorista...", color: "bg-muted" },
-      accepted: { text: "Motorista a caminho", color: "bg-primary" },
-      ongoing: { text: "Em andamento", color: "bg-primary" },
-      completed: { text: "Corrida finalizada", color: "bg-muted" },
-    };
-
-    if (rideStatus === "idle") return null;
-
-    const config = statusConfig[rideStatus];
-    return (
-      <div
-        className={`${config.color} text-primary-foreground px-4 py-3 rounded-xl text-sm text-center mb-4`}
-      >
-        {config.text}
-      </div>
-    );
-  };
 
   return (
     <div
       className={`w-full min-h-screen bg-background text-foreground flex flex-col force-mobile ${
         forceMobile ? "mobile-force-view" : ""
       }`}
+      style={{
+        backgroundColor: '#0B0B0B',
+        color: '#ECECEC',
+        minHeight: '100vh',
+      }}
     >
       <div className="mobile-content">
-        {/* Header */}
-        <header className="bg-card border-b border-border px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="p-1 bg-primary rounded-lg">
-                <Car className="text-primary-foreground" size={20} />
-              </div>
-              <div>
-                <h1 className="text-sm font-bold">VaiComigo</h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
+        {/* Header Fixo com Backdrop Blur */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+          <div className="flex items-center p-4 pb-2 justify-between">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="text-foreground flex size-12 shrink-0 items-center justify-center rounded-full hover:bg-muted transition-colors"
+              aria-label="Menu"
+            >
+              <Menu size={24} />
+            </button>
+            <h2 className="text-foreground text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center font-display">
+              VaiComigo
+            </h2>
+            <div className="flex w-12 items-center justify-end">
               <Auth />
-              <button
-                onClick={() => setForceMobile(!forceMobile)}
-                className={`p-1 hover:bg-muted rounded-lg transition-colors ${
-                  forceMobile ? "bg-primary text-primary-foreground" : ""
-                }`}
-                aria-label="Forçar visualização mobile"
-                title="Simular visualização mobile no navegador"
-              >
-                <Smartphone size={20} />
-              </button>
-              <button
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-1 hover:bg-muted rounded-lg transition-colors"
-                aria-label="Menu"
-              >
-                {showMenu ? <X size={20} /> : <Menu size={20} />}
-              </button>
             </div>
           </div>
         </header>
@@ -463,6 +506,26 @@ export default function App() {
                   <CreditCard size={20} className="text-primary" />
                   <span>Pagamento</span>
                 </button>
+                <button
+                  onClick={() => {
+                    setScreen("admin");
+                    setShowMenu(false);
+                  }}
+                  className="w-full text-left p-3 hover:bg-muted rounded-lg transition-colors flex items-center gap-3"
+                >
+                  <ClipboardList size={20} className="text-primary" />
+                  <span>Admin</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setScreen("chat");
+                    setShowMenu(false);
+                  }}
+                  className="w-full text-left p-3 hover:bg-muted rounded-lg transition-colors flex items-center gap-3"
+                >
+                  <MessageCircle size={20} className="text-primary" />
+                  <span>Chat</span>
+                </button>
                 {isLoggedIn ? (
                   <button
                     onClick={() => {
@@ -492,8 +555,18 @@ export default function App() {
         )}
 
         {/* Conteúdo Principal */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="flex flex-col">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            {/* Tela de Preferências VaiPet */}
+            {screen === "vaipet-preferences" ? (
+              <VaiPetPreferences
+                onBack={() => setScreen("home")}
+                onConfirm={() => {
+                  setScreen("home");
+                }}
+              />
+            ) : (
+              <>
             {/* LOGIN */}
             {screen === "login" && (
               <div className="flex-1 flex items-center justify-center p-4">
@@ -539,91 +612,249 @@ export default function App() {
               </div>
             )}
 
-            {/* HOME - Solicitar Corrida */}
+            {/* HOME - Solicitar Corrida - Layout Mobile-First */}
             {screen === "home" && rideStatus === "idle" && (
-              <>
-                {/* Mapa (acima) */}
-                <div className="h-64 md:h-96 lg:h-[600px] w-full">
-                  <MapComponent center={mapCenter} />
+              <div className="w-full">
+                {/* Mapa no Topo */}
+                <div className="relative w-full h-[45vh] mt-16">
+                  <div className="w-full h-full">
+                    <Map
+                      routePoints={[
+                        ...(validatedOrigin ? [validatedOrigin] : []),
+                        ...(validatedStops.filter(Boolean) as RouteStop[]),
+                        ...(validatedDestination ? [validatedDestination] : []),
+                      ]}
+                      routeGeometry={routeGeometry}
+                      onLocationSelect={(point) => {
+                        if (!origin) {
+                          setOrigin(point.fullAddress);
+                          setValidatedOrigin({ ...point, kind: "origin" });
+                        } else if (!destination) {
+                          setDestination(point.fullAddress);
+                          setValidatedDestination({ ...point, kind: "destination" });
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
 
-                <div className="p-4 space-y-4">
-                  {/* Seleção de Categoria */}
-                  <div className="bg-card p-6 rounded-2xl border border-border">
-                    <h2 className="mb-4">Escolha seu serviço</h2>
+                {/* Conteúdo Principal com Rounded Top */}
+                <div className="relative -mt-6 bg-background rounded-t-3xl flex-1 px-4 pt-6 pb-40">
+                  {/* Handle Bar */}
+                  <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full mx-auto mb-6"></div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-4">
+                  {/* Input de Busca */}
+                  <div className="space-y-3 mb-6">
+                    <LocationInput
+                      type="origin"
+                      value={origin}
+                      onChange={setOrigin}
+                      onValidatedChange={(value) =>
+                        setValidatedOrigin(value ? { ...value, kind: "origin" } : null)
+                      }
+                      placeholder="Origem em Padre Paraiso"
+                    />
+                    <LocationInput
+                      type="destination"
+                      value={destination}
+                      onChange={setDestination}
+                      onValidatedChange={(value) =>
+                        setValidatedDestination(value ? { ...value, kind: "destination" } : null)
+                      }
+                      placeholder="Para onde vamos?"
+                    />
+                    {stops.map((stop, index) => (
+                      <LocationInput
+                        key={index}
+                        type="stop"
+                        value={stop}
+                        onChange={(value) => handleUpdateStop(index, value)}
+                        onValidatedChange={(value) =>
+                          handleValidatedStop(index, value ? { ...value, kind: "stop" } : null)
+                        }
+                        placeholder={`Parada ${index + 1}`}
+                        onRemove={() => handleRemoveStop(index)}
+                      />
+                    ))}
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleAddStop}
+                        disabled={stops.length >= 3}
+                        className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary/10 text-primary gap-2 text-sm font-bold leading-normal hover:bg-primary/20 transition-colors"
+                      >
+                        <Plus size={18} />
+                        <span className="truncate">Parada</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Nossos Serviços - Cards Horizontais */}
+                  <div className="mt-8">
+                    <h3 className="text-foreground text-lg font-bold leading-tight tracking-[-0.015em] mb-4 font-display">
+                      Nossos Serviços
+                    </h3>
+
+                    {/* Cards de Serviços - Scroll Horizontal */}
+                    <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-4 -mx-1 px-1">
                       {/* VaiComigo (Passageiros) */}
                       <button
                         onClick={() => handleCategoryChange("passenger")}
-                        className={`p-4 rounded-xl border-2 transition-all ${
+                        className={`flex flex-col items-center justify-between min-w-[100px] aspect-[4/5] p-3 rounded-2xl border-2 transition-all ${
                           !categories.isDelivery && !categories.isMarket
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
+                            ? "bg-primary border-primary shadow-xl"
+                            : "bg-card border-transparent hover:border-primary/50"
                         }`}
                       >
-                        <User className="mx-auto mb-2 text-primary" size={32} />
-                        <div className="font-bold text-sm">VaiComigo!</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Passageiros
-                        </div>
+                        <Car
+                          className={`${
+                            !categories.isDelivery && !categories.isMarket
+                              ? "text-white"
+                              : "text-primary"
+                          }`}
+                          size={32}
+                        />
+                        <span
+                          className={`text-xs font-bold text-center ${
+                            !categories.isDelivery && !categories.isMarket
+                              ? "text-white"
+                              : "text-foreground"
+                          }`}
+                        >
+                          VaiComigo!
+                        </span>
+                        <span
+                          className={`text-[10px] ${
+                            !categories.isDelivery && !categories.isMarket
+                              ? "text-white/80"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          1-4 pessoas
+                        </span>
                       </button>
 
                       {/* VaiPet */}
                       <button
-                        onClick={() => handleCategoryChange("pet")}
+                        onClick={() => setScreen("vaipet-preferences")}
                         disabled={categories.isDelivery || categories.isMarket}
-                        className={`p-4 rounded-xl border-2 transition-all ${
+                        className={`flex flex-col items-center justify-between min-w-[100px] aspect-[4/5] p-3 rounded-2xl border-2 transition-all ${
                           categories.hasPet &&
                           !categories.isDelivery &&
                           !categories.isMarket
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
+                            ? "bg-primary border-primary shadow-xl"
+                            : "bg-card border-transparent hover:border-primary/50"
                         } ${categories.isDelivery || categories.isMarket ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
-                        <Dog className="mx-auto mb-2 text-primary" size={32} />
-                        <div className="font-bold text-sm">VaiPet</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          +R$ {PRICING_CONFIG[region].petFee.toFixed(2)}
+                        <div className="flex items-center justify-center -space-x-2">
+                          <User
+                            size={20}
+                            className={`${
+                              categories.hasPet &&
+                              !categories.isDelivery &&
+                              !categories.isMarket
+                                ? "text-white"
+                                : "text-primary"
+                            }`}
+                          />
+                          <Dog
+                            size={20}
+                            className={`${
+                              categories.hasPet &&
+                              !categories.isDelivery &&
+                              !categories.isMarket
+                                ? "text-white"
+                                : "text-primary"
+                            }`}
+                          />
                         </div>
+                        <span
+                          className={`text-xs font-bold text-center ${
+                            categories.hasPet &&
+                            !categories.isDelivery &&
+                            !categories.isMarket
+                              ? "text-white"
+                              : "text-foreground"
+                          }`}
+                        >
+                          Passageiro + Pet
+                        </span>
+                        <span
+                          className={`text-[10px] ${
+                            categories.hasPet &&
+                            !categories.isDelivery &&
+                            !categories.isMarket
+                              ? "text-white/80"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          Amigável a pets
+                        </span>
                       </button>
 
                       {/* VaiEntrega */}
                       <button
                         onClick={() => handleCategoryChange("delivery")}
-                        className={`p-4 rounded-xl border-2 transition-all ${
+                        className={`flex flex-col items-center justify-between min-w-[100px] aspect-[4/5] p-3 rounded-2xl border-2 transition-all ${
                           categories.isDelivery
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
+                            ? "bg-primary border-primary shadow-xl"
+                            : "bg-card border-transparent hover:border-primary/50"
                         }`}
                       >
                         <Package
-                          className="mx-auto mb-2 text-primary"
+                          className={`${
+                            categories.isDelivery ? "text-white" : "text-primary"
+                          }`}
                           size={32}
                         />
-                        <div className="font-bold text-sm">VaiEntrega</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Até 20kg
-                        </div>
+                        <span
+                          className={`text-xs font-bold text-center ${
+                            categories.isDelivery ? "text-white" : "text-foreground"
+                          }`}
+                        >
+                          VaiEntrega
+                        </span>
+                        <span
+                          className={`text-[10px] ${
+                            categories.isDelivery
+                              ? "text-white/80"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          Entregas
+                        </span>
                       </button>
 
                       {/* VaiMercado */}
                       <button
                         onClick={() => handleCategoryChange("market")}
-                        className={`p-4 rounded-xl border-2 transition-all ${
+                        className={`flex flex-col items-center justify-between min-w-[100px] aspect-[4/5] p-3 rounded-2xl border-2 transition-all ${
                           categories.isMarket
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/50"
+                            ? "bg-primary border-primary shadow-xl"
+                            : "bg-card border-transparent hover:border-primary/50"
                         }`}
                       >
                         <ShoppingBag
-                          className="mx-auto mb-2 text-primary"
+                          className={`${
+                            categories.isMarket ? "text-white" : "text-primary"
+                          }`}
                           size={32}
                         />
-                        <div className="font-bold text-sm">VaiMercado</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Compras
-                        </div>
+                        <span
+                          className={`text-xs font-bold text-center ${
+                            categories.isMarket ? "text-white" : "text-foreground"
+                          }`}
+                        >
+                          VaiMercado
+                        </span>
+                        <span
+                          className={`text-[10px] ${
+                            categories.isMarket
+                              ? "text-white/80"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          Mercado
+                        </span>
                       </button>
                     </div>
 
@@ -660,11 +891,11 @@ export default function App() {
                       <div className="bg-secondary p-4 rounded-xl flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
                           Usar porta malas (+R${" "}
-                          {PRICING_CONFIG[region].trunkFee.toFixed(2)})
+                          {pricingConfig.trunkFee.toFixed(2)})
                         </span>
                         <button
                           onClick={() =>
-                            setCategories({
+                            categoryStore.setCategories({
                               ...categories,
                               hasTrunk: !categories.hasTrunk,
                             })
@@ -684,310 +915,78 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Resumo da Seleção */}
-                    <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/30">
-                      <div className="text-sm text-center">
-                        <span className="text-muted-foreground">
-                          Selecionado:{" "}
-                        </span>
-                        <span className="font-bold text-primary">
-                          {getCategoryDescription(categories)}
-                        </span>
+                  </div>
+
+                  {/* Histórico de Endereços */}
+                  <div className="mt-4 space-y-0">
+                    <div className="flex items-center gap-4 py-2 cursor-pointer hover:bg-card/50 rounded-lg px-2 transition-colors">
+                      <div className="size-10 rounded-full bg-card flex items-center justify-center text-muted-foreground">
+                        <History size={20} />
                       </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-foreground">Av. Paulista, 1000</p>
+                        <p className="text-xs text-muted-foreground">Bela Vista, São Paulo</p>
+                      </div>
+                      <ChevronRight size={20} className="text-muted-foreground" />
+                    </div>
+                    <div className="flex items-center gap-4 py-2 border-t border-border cursor-pointer hover:bg-card/50 rounded-lg px-2 transition-colors">
+                      <div className="size-10 rounded-full bg-card flex items-center justify-center text-muted-foreground">
+                        <Home size={20} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-foreground">Casa</p>
+                        <p className="text-xs text-muted-foreground">Rua Oscar Freire, 204</p>
+                      </div>
+                      <ChevronRight size={20} className="text-muted-foreground" />
                     </div>
                   </div>
 
-                  {/* Formulário de Endereços */}
-                  <div className="bg-card p-6 rounded-2xl border border-border space-y-4">
-                    <h2 className="mb-2">Para onde vamos?</h2>
-
-                    {!isLoggedIn && (
-                      <div className="bg-muted p-4 rounded-lg text-center">
-                        <p className="text-muted-foreground mb-2">
-                          Faça login para inserir endereços
-                        </p>
-                        <button
-                          onClick={() => setScreen("login")}
-                          className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors"
-                        >
-                          Entrar
-                        </button>
-                      </div>
-                    )}
-
-                    {isLoggedIn && (
-                      <>
-                        {/* CEP */}
+                  {/* Resumo e Preço - Removido formulário duplicado */}
+                  {routeInfo && totalPrice > 0 && (
+                    <div className="mt-6 bg-card p-4 rounded-2xl border border-border">
+                      <div className="flex justify-between items-center">
                         <div>
-                          <label className="block text-sm font-medium mb-2">
-                            CEP
-                          </label>
-                          <input
-                            type="text"
-                            value={cep}
-                            onChange={(e) =>
-                              handleCepChange(e.target.value.replace(/\D/g, ""))
-                            }
-                            placeholder="00000-000"
-                            maxLength={8}
-                            className="w-full p-3 bg-secondary rounded-lg border border-border"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Digite o CEP para centralizar o mapa na cidade
+                          <p className="text-sm text-muted-foreground">Distância</p>
+                          <p className="text-lg font-bold">{routeInfo.distance} km</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Tempo</p>
+                          <p className="text-lg font-bold">{routeInfo.duration} min</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Total</p>
+                          <p className="text-2xl font-bold text-primary">
+                            R$ {calculateFinalPrice(totalPrice).toFixed(2)}
                           </p>
                         </div>
-
-                        <LocationInput
-                          type="origin"
-                          value={origin}
-                          onChange={setOrigin}
-                          placeholder="Endereço de origem"
-                        />
-                      </>
-                    )}
-
-                    {/* Paradas */}
-                    {stops.map((stop, index) => (
-                      <div key={index}>
-                        <div className="flex items-center gap-4 my-3">
-                          <div className="flex-1 border-t border-border" />
-                          <Clock className="text-muted-foreground" size={16} />
-                          <div className="flex-1 border-t border-border" />
-                        </div>
-                        <LocationInput
-                          type="stop"
-                          value={stop}
-                          onChange={(value) => handleUpdateStop(index, value)}
-                          placeholder={`Parada ${index + 1}`}
-                          onRemove={() => handleRemoveStop(index)}
-                        />
                       </div>
-                    ))}
-
-                    {/* Adicionar Parada */}
-                    {stops.length < 3 && (
-                      <button
-                        onClick={handleAddStop}
-                        className="w-full py-3 border border-dashed border-border rounded-xl text-muted-foreground hover:text-foreground hover:border-primary transition-all flex items-center justify-center gap-2"
-                      >
-                        <Plus size={18} />
-                        <span>
-                          Adicionar parada (+R${" "}
-                          {PRICING_CONFIG[region].stopPointFee.toFixed(2)})
-                        </span>
-                      </button>
-                    )}
-
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 border-t border-border" />
-                      <Clock className="text-muted-foreground" size={16} />
-                      <div className="flex-1 border-t border-border" />
                     </div>
-
-                    <LocationInput
-                      type="destination"
-                      value={destination}
-                      onChange={setDestination}
-                      placeholder="Endereço de destino"
-                    />
-
-                    {/* Cupom Aplicado */}
-                    {appliedCoupon && (
-                      <div className="bg-primary/10 border border-primary rounded-xl p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Tag size={20} className="text-primary" />
-                          <div>
-                            <div className="text-sm font-bold">
-                              {appliedCoupon.code}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {appliedCoupon.type === "percent"
-                                ? `${appliedCoupon.discount}% OFF`
-                                : `R$ ${appliedCoupon.discount} OFF`}
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={removeCoupon}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <X size={20} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Resumo do Preço */}
-                    {routeInfo && totalPrice > 0 && (
-                      <div className="bg-secondary p-4 rounded-xl space-y-2 border border-border">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Distância estimada
-                          </span>
-                          <span className="font-medium">
-                            {routeInfo.distance} km
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Tempo estimado
-                          </span>
-                          <span className="font-medium">
-                            {routeInfo.duration} min
-                          </span>
-                        </div>
-
-                        {stops.length > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              {stops.length}{" "}
-                              {stops.length === 1 ? "parada" : "paradas"}
-                            </span>
-                            <span className="font-medium">
-                              +R${" "}
-                              {(
-                                stops.length *
-                                PRICING_CONFIG[region].stopPointFee
-                              ).toFixed(2)}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="border-t border-border pt-2 mt-2">
-                          {appliedCoupon && (
-                            <>
-                              <div className="flex justify-between text-sm mb-1">
-                                <span className="text-muted-foreground line-through">
-                                  Subtotal
-                                </span>
-                                <span className="line-through text-muted-foreground">
-                                  R$ {totalPrice.toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between text-sm mb-2">
-                                <span className="text-primary">Desconto</span>
-                                <span className="text-primary">
-                                  - R${" "}
-                                  {(
-                                    totalPrice - calculateFinalPrice(totalPrice)
-                                  ).toFixed(2)}
-                                </span>
-                              </div>
-                            </>
-                          )}
-                          <div className="flex justify-between items-center pt-2 border-t border-border">
-                            <span className="font-bold">Total</span>
-                            <span className="text-2xl font-bold text-primary">
-                              R$ {calculateFinalPrice(totalPrice).toFixed(2)}
-                            </span>
-                          </div>
-                        </div>
-
-                        <p className="text-xs text-muted-foreground mt-2 text-center">
-                          ⓘ Preço fixo - não muda durante a corrida
-                        </p>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={handleRequestRide}
-                      disabled={!origin || !destination || !routeInfo}
-                      className="w-full bg-primary text-primary-foreground p-4 rounded-xl font-bold hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                    >
-                      <Car size={20} />
-                      <span>Confirmar e Chamar Motorista</span>
-                    </button>
-                  </div>
+                  )}
+                  {routeError && (
+                    <div className="mt-4 bg-card border border-[#8B2E2E] p-4 rounded-xl text-sm text-[#ffb4ab]">
+                      {routeError}
+                    </div>
+                  )}
                 </div>
-              </>
+              </div>
             )}
 
             {/* CORRIDA EM ANDAMENTO */}
             {screen === "ride-progress" && rideStatus !== "idle" && (
               <div className="space-y-4 max-w-2xl mx-auto lg:col-span-2">
-                <RideStatusBadge />
+                <RideStatusBadge status={rideStatus} />
 
                 {/* Info do Motorista */}
                 {(rideStatus === "accepted" || rideStatus === "ongoing") && (
-                  <div className="bg-card border border-border p-6 rounded-2xl">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="text-6xl">{mockDriver.photo}</div>
-                      <div className="flex-1">
-                        <h2 className="text-xl font-bold">{mockDriver.name}</h2>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Star
-                            size={16}
-                            className="fill-current text-yellow-400"
-                          />
-                          <span>{mockDriver.rating}</span>
-                          <span>•</span>
-                          <span>{mockDriver.totalRides} corridas</span>
-                        </div>
-                        <div className="mt-2 text-sm">
-                          <div className="font-medium">{mockDriver.car}</div>
-                          <div className="text-muted-foreground">
-                            {mockDriver.plate}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <a
-                      href={`tel:${mockDriver.phone}`}
-                      className="flex items-center justify-center gap-2 bg-primary text-primary-foreground p-3 rounded-xl font-medium hover:bg-primary/90 transition-colors"
-                    >
-                      <Phone size={20} />
-                      Ligar para o motorista
-                    </a>
-                  </div>
+                  <DriverCard driver={mockDriver} />
                 )}
 
                 {/* Rota */}
-                <div className="bg-card border border-border p-6 rounded-2xl space-y-3">
-                  <h3 className="font-bold mb-3">Rota</h3>
-                  <div className="flex items-start gap-3">
-                    <MapPin
-                      className="text-primary mt-1 flex-shrink-0"
-                      size={20}
-                    />
-                    <div className="flex-1">
-                      <div className="text-xs text-muted-foreground">
-                        Origem
-                      </div>
-                      <div className="text-sm font-medium">{origin}</div>
-                    </div>
-                  </div>
-
-                  {stops.map(
-                    (stop, index) =>
-                      stop && (
-                        <div key={index} className="flex items-start gap-3">
-                          <Clock
-                            className="text-yellow-500 mt-1 flex-shrink-0"
-                            size={20}
-                          />
-                          <div className="flex-1">
-                            <div className="text-xs text-muted-foreground">
-                              Parada {index + 1}
-                            </div>
-                            <div className="text-sm font-medium">{stop}</div>
-                          </div>
-                        </div>
-                      ),
-                  )}
-
-                  <div className="flex items-start gap-3">
-                    <Navigation
-                      className="text-primary mt-1 flex-shrink-0"
-                      size={20}
-                    />
-                    <div className="flex-1">
-                      <div className="text-xs text-muted-foreground">
-                        Destino
-                      </div>
-                      <div className="text-sm font-medium">{destination}</div>
-                    </div>
-                  </div>
-                </div>
+                <RouteDisplay
+                  origin={origin}
+                  destination={destination}
+                  stops={stops}
+                />
 
                 {/* Categoria e Resumo */}
                 <div className="bg-card border border-border p-6 rounded-2xl">
@@ -1230,74 +1229,83 @@ export default function App() {
               </div>
             )}
 
+            {/* CHAT */}
+            {screen === "chat" && (
+              <div className="h-[calc(100vh-200px)] max-w-2xl mx-auto lg:col-span-2">
+                <Chat driverName={mockDriver.name} driverPhoto={mockDriver.photo} />
+              </div>
+            )}
+
             {/* PAGAMENTO */}
             {screen === "payment" && (
-              <div className="space-y-4 lg:col-span-2">
+              <div className="space-y-4 lg:col-span-2 max-w-2xl mx-auto">
                 <h2 className="text-xl font-bold mb-4">Formas de Pagamento</h2>
-                <div className="bg-card border border-border p-6 rounded-2xl space-y-4">
-                  {/* Cartão de Crédito */}
-                  <div className="flex items-center gap-3 p-4 bg-secondary rounded-xl">
-                    <CreditCard size={24} className="text-primary" />
-                    <div className="flex-1">
-                      <div className="font-bold">Cartão de Crédito</div>
-                      <div className="text-sm text-muted-foreground">
-                        •••• •••• •••• 1234
-                      </div>
-                    </div>
-                    <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
-                      Padrão
-                    </span>
-                  </div>
+                <div className="bg-card border border-border p-6 rounded-2xl">
+                  <PaymentMethods
+                    selectedMethod={undefined}
+                    onSelectMethod={(method) => {
+                      console.log("Método selecionado:", method);
+                      // Aqui você pode salvar o método selecionado
+                    }}
+                    totalAmount={totalPrice}
+                    showFees={true}
+                  />
 
-                  {/* Pix */}
-                  <div className="flex items-center gap-3 p-4 border border-border rounded-xl hover:bg-secondary transition-colors cursor-pointer">
-                    <Smartphone size={24} className="text-green-600" />
-                    <div className="flex-1">
-                      <div className="font-bold">Pix</div>
-                      <div className="text-sm text-muted-foreground">
-                        Pagamento instantâneo
-                      </div>
-                    </div>
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <button className="w-full p-4 border border-dashed border-border rounded-xl text-muted-foreground hover:text-foreground hover:border-primary transition-all flex items-center justify-center gap-2">
+                      <Plus size={20} />
+                      <span>Adicionar nova forma de pagamento</span>
+                    </button>
                   </div>
-
-                  {/* Bitcoin */}
-                  <div className="flex items-center gap-3 p-4 border border-border rounded-xl hover:bg-secondary transition-colors cursor-pointer">
-                    <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-bold">₿</div>
-                    <div className="flex-1">
-                      <div className="font-bold">Bitcoin</div>
-                      <div className="text-sm text-muted-foreground">
-                        Criptomoeda
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Dinheiro */}
-                  <div className="flex items-center gap-3 p-4 border border-border rounded-xl hover:bg-secondary transition-colors cursor-pointer">
-                    <Tag size={24} className="text-green-600" />
-                    <div className="flex-1">
-                      <div className="font-bold">Dinheiro</div>
-                      <div className="text-sm text-muted-foreground">
-                        Pague ao motorista
-                      </div>
-                    </div>
-                  </div>
-
-                  <button className="w-full p-4 border border-dashed border-border rounded-xl text-muted-foreground hover:text-foreground hover:border-primary transition-all flex items-center justify-center gap-2">
-                    <Plus size={20} />
-                    <span>Adicionar nova forma de pagamento</span>
-                  </button>
                 </div>
               </div>
+            )}
+
+            {/* CADASTRO DE MOTORISTA */}
+            {screen === "driver-registration" && (
+              <DriverRegistration
+                onSubmit={(data) => {
+                  console.log("Dados do cadastro:", data);
+                  // Aqui você enviaria os dados para a API
+                  alert("Cadastro enviado com sucesso! Aguarde a análise.");
+                  setScreen("home");
+                }}
+                onCancel={() => setScreen("home")}
+              />
+            )}
+            {screen === "admin" && <AdminDashboard />}
+              </>
             )}
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className="bg-card border-t border-border py-4 px-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            © 2026 VaiComigo - Mobilidade inteligente
-          </p>
-        </footer>
+        {/* Footer com Botão Pedir Agora e Navegação Inferior */}
+        {screen === "home" && rideStatus === "idle" && (
+          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border p-4 pb-8 z-50">
+            <button
+              onClick={handleRequestRide}
+              disabled={!validatedOrigin || !validatedDestination || totalPrice === 0 || !!routeError}
+              className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-[0.98] mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Pedir Agora
+            </button>
+            <BottomNavigation currentScreen={screen} onNavigate={setScreen} />
+          </div>
+        )}
+
+        {/* Navegação Inferior para outras telas */}
+        {screen !== "home" && screen !== "vaipet-preferences" && (
+          <BottomNavigation currentScreen={screen} onNavigate={setScreen} />
+        )}
+
+        {/* Footer padrão */}
+        {screen !== "home" && screen !== "vaipet-preferences" && (
+          <footer className="bg-card border-t border-border py-4 px-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              © 2026 VaiComigo - Mobilidade inteligente
+            </p>
+          </footer>
+        )}
       </div>
     </div>
   );

@@ -1,113 +1,68 @@
-# VaiComigo
+# VaiComigo!
 
-APP DE MOBILIDADE URBANA CARAIO
+Aplicativo local de mobilidade para operacao inicial em Padre Paraiso - MG.
 
-## 🚗 Sobre o VaiComigo
+Este projeto deve ser tratado como software operacional, nao como prototipo visual. Regras criticas de preco, rota, cidade ativa, carteira, aceite de corrida, status e taxa da plataforma devem ser validadas no backend, banco ou Edge Functions.
 
-VaiComigo é um aplicativo de mobilidade inteligente com múltiplas categorias:
+## Escopo Inicial
 
-- **VaiComigo!** - Transporte de passageiros (1-4 pessoas)
-- **VaiPet** - Transporte com animais de estimação
-- **VaiEntrega** - Entregas até 20kg
-- **VaiMercado** - Compras em supermercados
+- Transporte de passageiros
+- VaiPet
+- VaiEntrega
+- VaiMercado
+- Modalidade sugerida para fase futura: VaiApoio, para transporte acompanhado de idosos ou pessoas vulneraveis, com contato de seguranca obrigatorio e motorista aprovado em treinamento especifico.
 
-## ✨ Funcionalidades
+## Regras Criticas
 
-### ✅ Sistema de Categorias Combinadas
+- A operacao inicial fica limitada a Padre Paraiso - MG.
+- Toda corrida precisa de `city_id`.
+- Origem, destino e ate 3 paradas precisam ter lat/lng validos.
+- Rota, distancia e duracao precisam vir do Mapbox Directions.
+- Preco fixo deve ser calculado sobre rota real.
+- Passageiro paga dinheiro ou Pix direto ao motorista.
+- A plataforma desconta a taxa dos creditos virtuais do motorista apos corrida concluida.
+- Transacoes financeiras sao imutaveis.
 
-- Escolha entre 4 tipos de serviço
-- Combine passageiros + pet
-- Ajuste número de passageiros (1-4)
+## Configuracao
 
-### ✅ Sistema de Paradas
-
-- Adicione até 3 paradas intermediárias
-- Cada parada adiciona R$ 3,00
-- Remova paradas facilmente
-
-### ✅ Sistema de Cupons
-
-- PRIMEIRA - 10% OFF primeira corrida
-- VAIPET20 - 20% OFF em corridas com pet
-- MERCADO15 - 15% OFF no VaiMercado
-- FIXO5 - R$ 5 OFF em corridas acima de R$ 20
-
-### 📱 Progressive Web App (PWA)
-
-- Instalável em dispositivos móveis
-- Funciona offline
-- Notificações push
-- Interface otimizada para mobile
-
-## 🛠️ Tecnologias Utilizadas
-
-- **React 18** - Framework JavaScript
-- **TypeScript** - Tipagem estática
-- **Vite** - Build tool e dev server
-- **Tailwind CSS** - Framework de estilos
-- **shadcn/ui** - Componentes UI
-- **Lucide React** - Ícones
-- **Vite PWA** - Plugin para PWA
-
-## 🚀 Como executar
-
-### Pré-requisitos
-
-- Node.js 18+
-- npm ou yarn
-
-### Instalação
+Crie `.env.local` com base em `.env.example`:
 
 ```bash
-# Clone o repositório
-git clone https://github.com/jamesismos/VaiComigo-.git
-cd VaiComigo-
-
-# Instale as dependências
-npm install
-
-# Execute o projeto em modo desenvolvimento
-npm run dev
+VITE_CLERK_PUBLISHABLE_KEY=
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+VITE_MAPBOX_TOKEN=
 ```
 
-### Build para produção
+`VITE_MAPBOX_TOKEN` e obrigatorio para autocomplete, geocodificacao, mapa e rota real.
+
+## Banco
+
+O arquivo `database_schema.sql` contem a base Supabase para:
+
+- `cities`
+- `users`, `passengers`, `drivers`
+- `rides`, `ride_events`
+- `wallet_transactions`, `driver_recharges`, `financial_audit_logs`
+- `security_logs`, `fraud_flags`
+- `reports`
+- RLS nas tabelas
+- funcao `apply_ride_platform_fee`
+- trigger para impedir edicao/exclusao de transacoes financeiras
+
+## Desenvolvimento
 
 ```bash
+npm install
+npm run dev
 npm run build
 ```
 
-## 📱 Como usar como PWA
+## Pendencias Antes de Operacao Real
 
-### No Android (Chrome/Edge):
-
-1. Abra o app no navegador
-2. Toque no menu (⋮)
-3. Selecione "Adicionar à tela inicial"
-4. Confirme a instalação
-5. O ícone aparecerá na sua tela inicial como um app nativo!
-
-### No iOS (Safari):
-
-1. Abra o app no Safari
-2. Toque no botão "Compartilhar" (□↑)
-3. Role e toque em "Adicionar à Tela de Início"
-4. Dê um nome e confirme
-5. Use como um app normal!
-
-### No Desktop (Chrome/Edge):
-
-1. Abra o app no navegador
-2. Clique no ícone de instalação (+) na barra de endereço
-3. Clique em "Instalar"
-4. O app abrirá em sua própria janela!
-
-## 🔮 Futuro: iOS e Android
-
-Este projeto está preparado para ser encapsulado em apps nativos usando:
-
-- **Capacitor** - Framework para desenvolvimento híbrido
-- **React Native** - Para apps nativos (futuramente)
-
-## 📄 Licença
-
-Este projeto é de código aberto e utiliza componentes de terceiros sob suas respectivas licenças. Veja [ATTRIBUTIONS.md](ATTRIBUTIONS.md) para detalhes.
+- Criar Edge Functions para `quote-ride`, `request-ride`, `accept-ride`, `complete-ride`, `cancel-ride`, `confirm-driver-recharge`.
+- Mover calculo definitivo de preco/taxa para Edge Function com service role.
+- Implementar rate limit por usuario/IP.
+- Integrar Supabase Auth/Clerk de forma consistente com `auth.uid()`.
+- Revisar vulnerabilidades do `npm audit`.
+- Testar rotas reais em campo em Padre Paraiso.

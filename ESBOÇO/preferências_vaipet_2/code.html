@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f614b",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#0B0B0B",
+                        "off-white": "#F5F5F5",
+                        "card-dark": "#1A1A1A",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: "Plus Jakarta Sans", sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-gray-900 dark:text-off-white min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-10 bg-background-light dark:bg-background-dark border-b border-gray-200 dark:border-gray-800">
+<div class="flex items-center p-4 pb-2 justify-between">
+<button class="text-gray-900 dark:text-white flex size-12 shrink-0 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined">arrow_back_ios</span>
+</button>
+<h2 class="text-gray-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12">Detalhes do seu Pet</h2>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto pb-40">
+<!-- SectionHeader: Tipo de Transporte -->
+<div class="px-4 pt-6 pb-2">
+<h3 class="text-gray-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Tipo de Transporte</h3>
+<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Como seu pet irá viajar?</p>
+</div>
+<!-- SegmentedButtons: Tipo de Transporte -->
+<div class="flex px-4 py-3">
+<div class="flex h-14 flex-1 items-center justify-center rounded-xl bg-gray-200 dark:bg-card-dark p-1.5">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-background-dark has-[:checked]:shadow-sm has-[:checked]:text-primary text-gray-500 dark:text-gray-400 text-sm font-semibold leading-normal transition-all">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+<span class="truncate text-off-white">Na Caixa</span>
+</div>
+<input checked="" class="invisible w-0" name="transport-type" type="radio" value="box"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-white dark:has-[:checked]:bg-background-dark has-[:checked]:shadow-sm has-[:checked]:text-primary text-gray-500 dark:text-gray-400 text-sm font-semibold leading-normal transition-all">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">pets</span>
+<span class="truncate text-off-white">Fora da Caixa (com guia)</span>
+</div>
+<input class="invisible w-0" name="transport-type" type="radio" value="leash"/>
+</label>
+</div>
+</div>
+<!-- SectionHeader: Porte do Pet -->
+<div class="px-4 pt-6 pb-2">
+<h3 class="text-gray-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">Porte do Pet</h3>
+</div>
+<!-- SegmentedButtons: Porte do Pet -->
+<div class="flex px-4 py-3">
+<div class="flex h-12 flex-1 items-center justify-center rounded-xl bg-gray-200 dark:bg-card-dark p-1.5">
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-primary has-[:checked]:text-white text-gray-500 dark:text-gray-400 text-sm font-medium leading-normal transition-all">
+<span class="truncate">Pequeno</span>
+<input class="invisible w-0" name="pet-size" type="radio" value="small"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-primary has-[:checked]:text-white text-gray-500 dark:text-gray-400 text-sm font-medium leading-normal transition-all">
+<span class="truncate">Médio</span>
+<input checked="" class="invisible w-0" name="pet-size" type="radio" value="medium"/>
+</label>
+<label class="flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-lg px-2 has-[:checked]:bg-primary has-[:checked]:text-white text-gray-500 dark:text-gray-400 text-sm font-medium leading-normal transition-all">
+<span class="truncate">Grande</span>
+<input class="invisible w-0" name="pet-size" type="radio" value="large"/>
+</label>
+</div>
+</div>
+<!-- Observation Field -->
+<div class="px-4 pt-6">
+<h3 class="text-gray-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] pb-2">Alguma observação para o motorista?</h3>
+<textarea class="w-full bg-gray-100 dark:bg-card-dark border-none rounded-xl p-4 text-gray-900 dark:text-off-white focus:ring-2 focus:ring-primary min-h-[120px] placeholder-gray-500" placeholder="Ex: Meu pet é um pouco agitado, ou precisa de ar-condicionado mais forte..."></textarea>
+</div>
+<!-- Info Card -->
+<div class="m-4 p-4 rounded-xl bg-primary/10 border border-primary/20 flex items-start gap-3">
+<span class="material-symbols-outlined text-primary">info</span>
+<p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                Certifique-se de que o animal esteja limpo e seguro durante todo o trajeto para garantir o conforto de todos.
+            </p>
+</div>
+</main>
+<!-- Sticky Footer -->
+<footer class="fixed bottom-0 left-0 right-0 bg-background-light dark:bg-background-dark border-t border-gray-200 dark:border-gray-800 p-4 pb-8 shadow-[0_-4px_10px_rgba(0,0,0,0.1)]">
+<div class="max-w-md mx-auto">
+<div class="flex justify-between items-center mb-4 px-1">
+<span class="text-gray-500 dark:text-gray-400 font-medium">Custo adicional categoria Pet</span>
+<span class="text-primary font-bold text-lg">+ R$ 8,00</span>
+</div>
+<button class="w-full bg-primary hover:bg-[#0d5341] text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 active:scale-[0.98]">
+<span>Confirmar Preferências</span>
+<span class="material-symbols-outlined">check_circle</span>
+</button>
+</div>
+</footer>
+</body></html>
