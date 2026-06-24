@@ -1,8 +1,15 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { getInitialCity } from "@/domains/cities/cityConfig";
-import { getMapboxToken, reverseMapboxGeocode, type RouteStop } from "@/domains/maps/mapboxService";
+import {
+  getMapboxToken,
+  reverseMapboxGeocode,
+  type RouteStop,
+} from "@/domains/maps/mapboxService";
 
 interface MapProps {
   routePoints?: RouteStop[];
@@ -12,7 +19,69 @@ interface MapProps {
 
 const city = getInitialCity();
 
-export function Map({ routePoints = [], routeGeometry, onLocationSelect }: MapProps) {
+const defaultIcon = L.icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+function LeafletClickHandler({
+  routePoints,
+  onLocationSelect,
+}: {
+  routePoints: RouteStop[];
+  onLocationSelect?: (point: RouteStop) => void;
+}) {
+  useMapEvents({
+    click: async (event) => {
+      if (!onLocationSelect) return;
+
+      const address = await reverseMapboxGeocode({
+        lat: event.latlng.lat,
+        lng: event.latlng.lng,
+      });
+
+      onLocationSelect({ ...address, kind: routePoints.length === 0 ? "origin" : "destination" });
+    },
+  });
+
+  return null;
+}
+
+function OpenStreetMapFallback({ routePoints, routeGeometry, onLocationSelect }: MapProps) {
+  const routeLatLngs =
+    routeGeometry?.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]) ?? [];
+
+  return (
+    <MapContainer
+      center={[city.centerLat, city.centerLng]}
+      zoom={14}
+      minZoom={11}
+      maxZoom={19}
+      scrollWheelZoom
+      className="w-full h-full rounded-2xl border border-border"
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <LeafletClickHandler routePoints={routePoints ?? []} onLocationSelect={onLocationSelect} />
+      {routePoints?.map((point) => (
+        <Marker key={`${point.kind}-${point.id}`} position={[point.lat, point.lng]} icon={defaultIcon}>
+          <Popup>{point.fullAddress}</Popup>
+        </Marker>
+      ))}
+      {routeLatLngs.length > 0 && (
+        <Polyline positions={routeLatLngs} pathOptions={{ color: "#0F5F4A", weight: 5 }} />
+      )}
+    </MapContainer>
+  );
+}
+
+function MapboxMap({ routePoints = [], routeGeometry, onLocationSelect }: MapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -36,15 +105,11 @@ export function Map({ routePoints = [], routeGeometry, onLocationSelect }: MapPr
 
     mapRef.current.on("click", async (event) => {
       if (!onLocationSelect) return;
-      try {
-        const address = await reverseMapboxGeocode({
-          lat: event.lngLat.lat,
-          lng: event.lngLat.lng,
-        });
-        onLocationSelect({ ...address, kind: routePoints.length === 0 ? "origin" : "destination" });
-      } catch (error) {
-        console.error(error);
-      }
+      const address = await reverseMapboxGeocode({
+        lat: event.lngLat.lat,
+        lng: event.lngLat.lng,
+      });
+      onLocationSelect({ ...address, kind: routePoints.length === 0 ? "origin" : "destination" });
     });
 
     return () => {
@@ -66,7 +131,6 @@ export function Map({ routePoints = [], routeGeometry, onLocationSelect }: MapPr
         .addTo(map);
     });
 
-    const source = map.getSource("vai-route") as mapboxgl.GeoJSONSource | undefined;
     const routeFeature: GeoJSON.Feature<GeoJSON.LineString> = {
       type: "Feature",
       properties: {},
@@ -101,19 +165,15 @@ export function Map({ routePoints = [], routeGeometry, onLocationSelect }: MapPr
       routePoints.forEach((point) => bounds.extend([point.lng, point.lat]));
       map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
     }
-
-    void source;
   }, [routeGeometry, routePoints]);
 
+  return <div ref={containerRef} className="w-full h-full rounded-2xl overflow-hidden border border-border" />;
+}
+
+export function Map(props: MapProps) {
   if (!getMapboxToken()) {
-    return (
-      <div className="w-full h-full rounded-2xl border border-border bg-card p-4 flex items-center justify-center text-center">
-        <p className="text-sm text-muted-foreground">
-          Configure VITE_MAPBOX_TOKEN para ativar mapa, autocomplete e rota real.
-        </p>
-      </div>
-    );
+    return <OpenStreetMapFallback {...props} />;
   }
 
-  return <div ref={containerRef} className="w-full h-full rounded-2xl overflow-hidden border border-border" />;
+  return <MapboxMap {...props} />;
 }

@@ -31,10 +31,11 @@ Crie `.env.local` com base em `.env.example`:
 VITE_CLERK_PUBLISHABLE_KEY=
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
+VITE_SUPABASE_PUBLISHABLE_KEY=
 VITE_MAPBOX_TOKEN=
 ```
 
-`VITE_MAPBOX_TOKEN` e obrigatorio para autocomplete, geocodificacao, mapa e rota real.
+`VITE_MAPBOX_TOKEN` e recomendado para producao. Sem ele, o app usa fallback gratuito OpenStreetMap/Nominatim/OSRM para desenvolvimento e validacao inicial. Para operacao real, use Mapbox ou um provedor contratado com SLA.
 
 ## Banco
 
@@ -49,6 +50,24 @@ O arquivo `database_schema.sql` contem a base Supabase para:
 - RLS nas tabelas
 - funcao `apply_ride_platform_fee`
 - trigger para impedir edicao/exclusao de transacoes financeiras
+
+A pasta `supabase/migrations` contem a migracao versionada gerada por Supabase CLI.
+
+## Mapas
+
+Provedor principal:
+
+- Mapbox Geocoding
+- Mapbox Directions
+- Mapbox GL
+
+Fallback de desenvolvimento:
+
+- OpenStreetMap tiles
+- Nominatim para busca/reverso
+- OSRM publico para rota
+
+O fallback gratuito deve respeitar limites de uso e nao substitui SLA de producao.
 
 ## Desenvolvimento
 

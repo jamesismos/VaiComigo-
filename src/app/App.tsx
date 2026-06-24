@@ -50,12 +50,14 @@ import {
   calculateFinalPrice,
   getCategoryDescription,
   validateCoupon,
+  type CalculatedRoute,
 } from "@/app/utils/calculations";
 import Auth from "@/components/Auth";
 import { useLocationStore, useCategoryStore, useRideStore, useDriverStore } from "@/store";
 import { Driver } from "@/types";
 import { getInitialCity, validateRouteInsideCity } from "@/domains/cities/cityConfig";
 import type { RouteStop } from "@/domains/maps/mapboxService";
+import { requestRide } from "@/domains/rides/rideService";
 
 export default function App() {
   // Stores Zustand
@@ -93,13 +95,11 @@ export default function App() {
   const [validatedOrigin, setValidatedOrigin] = useState<RouteStop | null>(null);
   const [validatedDestination, setValidatedDestination] = useState<RouteStop | null>(null);
   const [validatedStops, setValidatedStops] = useState<Array<RouteStop | null>>([]);
-  const [routeInfo, setRouteInfo] = useState<{
-    distance: string;
-    duration: number;
-    distanceKm?: number;
-  } | null>(null);
+  const [routeInfo, setRouteInfo] = useState<CalculatedRoute | null>(null);
   const [routeGeometry, setRouteGeometry] = useState<GeoJSON.LineString | null>(null);
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [rideRequestError, setRideRequestError] = useState<string | null>(null);
+  const [isRequestingRide, setIsRequestingRide] = useState(false);
   const [totalPrice, setTotalPrice] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [rating, setRating] = useState(0);
@@ -360,14 +360,43 @@ export default function App() {
   };
 
   // Handlers de corrida (usando store)
-  const handleRequestRide = () => {
-    if (validatedOrigin && validatedDestination && routeInfo && totalPrice > 0) {
-      rideStore.updateRideStatus("searching");
+  const handleRequestRide = async () => {
+    if (!validatedOrigin || !validatedDestination || !routeInfo || totalPrice <= 0) return;
+
+    setIsRequestingRide(true);
+    setRideRequestError(null);
+
+    try {
+      await requestRide({
+        origin: validatedOrigin,
+        destination: validatedDestination,
+        stops: validatedStops.filter(Boolean) as RouteStop[],
+        route: routeInfo,
+        categories,
+        paymentMethod: "cash",
+      });
+
+      rideStore.setCurrentRide({
+        origin,
+        destination,
+        stops,
+        routeInfo,
+        totalPrice,
+        appliedCoupon,
+        categories,
+        region,
+        status: "searching",
+        driver: null,
+      });
       rideStore.setRideDriver(mockDriver);
-      setTimeout(() => {
+      setScreen("ride-progress");
+      window.setTimeout(() => {
         rideStore.updateRideStatus("accepted");
-        setScreen("ride-progress");
-      }, 2000);
+      }, 1500);
+    } catch (error) {
+      setRideRequestError(error instanceof Error ? error.message : "Nao foi possivel solicitar a corrida.");
+    } finally {
+      setIsRequestingRide(false);
     }
   };
 
@@ -967,6 +996,11 @@ export default function App() {
                       {routeError}
                     </div>
                   )}
+                  {rideRequestError && (
+                    <div className="mt-4 bg-card border border-[#8B2E2E] p-4 rounded-xl text-sm text-[#ffb4ab]">
+                      {rideRequestError}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1284,10 +1318,16 @@ export default function App() {
           <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t border-border p-4 pb-8 z-50">
             <button
               onClick={handleRequestRide}
-              disabled={!validatedOrigin || !validatedDestination || totalPrice === 0 || !!routeError}
+              disabled={
+                isRequestingRide ||
+                !validatedOrigin ||
+                !validatedDestination ||
+                totalPrice === 0 ||
+                !!routeError
+              }
               className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-[0.98] mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Pedir Agora
+              {isRequestingRide ? "Solicitando..." : "Pedir Agora"}
             </button>
             <BottomNavigation currentScreen={screen} onNavigate={setScreen} />
           </div>
